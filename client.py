@@ -11,6 +11,7 @@ class UDPClient:
         self.host = host  # Host Address
         self.port = port  # Host port
         self.sock = None  # Host Socket
+        self.name = None
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS' <message>.
@@ -30,7 +31,7 @@ class UDPClient:
         # 3.1. Create the UDP socket with IPv4 Addressing
         self.printwt('Creating client socket...')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.printwt(f'Bound client to {self.host}: {self.port}')
+        self.printwt(f'Create client to {self.host}: {self.port}')
 
     # 4. interact_with_server() - Send name to server and receive phone number from server
     def interact_with_server(self):
@@ -87,7 +88,6 @@ class UDPClient:
 
 def main():
     """ Create a UDP Client, send message to a UDP server and receive reply"""
-
     udp_client = UDPClient(socket.gethostbyname(socket.gethostname()), 0)
     udp_client.configure_client()
     udp_client.interact_with_server()

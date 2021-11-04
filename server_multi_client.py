@@ -18,6 +18,17 @@ class serverMultiClient(server.UDPServer):
     def handle_request(self, client_data, client_address):
         """ Handle the client """
 
+        # TODO 5.1.1 Handle request client requests. First bits are reserved for client requests types
+        # 0000 = register
+        # 0001 = de_register
+        # 0010 = publish
+        # 0011 = remove
+        # 0100 = retrieve_all
+        # 0101 = retrieve_info
+        # 0110 = search_file
+        # 0111 = download
+        # 1000 = update_context
+
         # to be removed , this is an example ------------------------------------------------------------------------
         # 2.1 Handle the request
         name = client_data.decode('utf-8')
