@@ -91,3 +91,7 @@ def main():
     udp_client = UDPClient(socket.gethostbyname(socket.gethostname()), 4444)
     udp_client.configure_client()
     udp_client.interact_with_server()
+
+
+if __name__ == '__main__':
+    main()
