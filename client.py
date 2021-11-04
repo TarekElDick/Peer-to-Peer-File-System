@@ -30,7 +30,7 @@ class UDPClient:
         # 3.1. Create the UDP socket with IPv4 Addressing
         self.printwt('Creating client socket...')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.printwt('Client socket created')
+        self.printwt(f'Bound client to {self.host}: {self.port}')
 
     # 4. interact_with_server() - Send name to server and receive phone number from server
     def interact_with_server(self):
@@ -55,7 +55,7 @@ class UDPClient:
             # send data to server
             self.printwt('Sending name to the server to get phone number')
             name = 'Alex'
-            self.sock.sendto(name.encode('utf-8'), (self.host, 3000))
+            self.sock.sendto(name.encode('utf-8'), (self.host, 3001))
             self.printwt('[ SENT ]')
             print('\n', name, '\n')
 
@@ -88,7 +88,7 @@ class UDPClient:
 def main():
     """ Create a UDP Client, send message to a UDP server and receive reply"""
 
-    udp_client = UDPClient(socket.gethostbyname(socket.gethostname()), 4444)
+    udp_client = UDPClient(socket.gethostbyname(socket.gethostname()), 0)
     udp_client.configure_client()
     udp_client.interact_with_server()
 
