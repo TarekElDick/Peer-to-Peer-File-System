@@ -19,7 +19,7 @@ class UDPServer:
     def printwt(msg):
         """ Print message with current time stamp"""
 
-        current_date_time = datetime.now().strftime('%Y-%m-%d %H:%M:#S')
+        current_date_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f'[{current_date_time}] {msg}')
 
     # 3. configure_server() - Creates a UDP socket that uses IPv4 and binds the server to a specific address.
