@@ -57,19 +57,8 @@ class UDPServer:
     def handle_request(self, client_data, client_address):
         """ Handle the client"""
 
-        # 5.1. Handle the clients request
+        # 5.1. Handle the clients request, just an example ----------------------------------------------------------
         name = client_data.decode('utf-8')
-
-        # TODO 5.1.1 Handle request client requests. First bits are reserved for client requests types
-        # 0000 = register
-        # 0001 = de_register
-        # 0010 = publish
-        # 0011 = remove
-        # 0100 = retrieve_all
-        # 0101 = retrieve_info
-        # 0110 = search_file
-        # 0111 = download
-        # 1000 = update_context
 
         # to remove, just an example ---------------------------------------------------------------------------------
 
@@ -106,9 +95,8 @@ class UDPServer:
         self.printwt('Shutting down server...')
         self.sock.close()
 
-    # 8. main() - Driver code to test the program
 
-
+# 8. main() - Driver code to test the program
 def main():
     """ Create a UDP Server and respond to a client's request """
     udp_server = UDPServer(socket.gethostbyname(socket.gethostname()), 3000)
