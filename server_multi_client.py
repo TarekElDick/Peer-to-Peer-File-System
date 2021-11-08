@@ -1,4 +1,5 @@
 # 0. Import the socket,  threading, datetime, and our own server.py module
+import pickle
 import socket
 import threading
 import server
@@ -29,20 +30,10 @@ class serverMultiClient(server.UDPServer):
         # 0111 = download
         # 1000 = update_context
 
-        # to be removed , this is an example ------------------------------------------------------------------------
-        # 2.1 Handle the request
-        name = client_data.decode('utf-8')
-        resp = self.get_phone_no(name)
-        self.printwt(f'[ REQUEST from {client_address} ]')
-        print('\n', name, '\n')
-
-        # send response to the client
-        self.printwt(f'[ RESPONSE to {client_address} ]')
-        with self.socket_lock:
-            self.sock.sendto(resp.encode('utf-8'), client_address)
-        print('\n', resp, '\n')
-
-        # ------------------------------------------------------------------------------------------------------------
+        self.printwt(f'Received request from client {client_address}')
+        request = client_data.decode('utf-8')
+        self.printwt(request)
+        #reponds to server for registration and check if already responded to that
 
     # 3. wait_for_client() - Override the server's wait_for_client() method to handle multiple clients by using an
     # infinite loop

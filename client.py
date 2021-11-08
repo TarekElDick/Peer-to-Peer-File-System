@@ -1,25 +1,30 @@
 # 0. Import the socket and datetime module
 import socket
+import register
+import pickle
 from datetime import datetime
 
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
-class UDPClient:
+class Client:
     """ A simple UDP Client """
 
-    def __init__(self, host, port):
+    def __init__(self, host, UDP_port, TCP_port):
+        self.name = None  # Host name
         self.host = host  # Host Address
-        self.port = port  # Host port
-        self.sock = None  # Host Socket
-        self.name = None
+        self.UDP_port = UDP_port  # Host UDP port
+        self.TCP_port = TCP_port  # Host TCP Port
+        self.UDP_sock = None  # Host UDP Socket
+        self.TCP_sock = None  # Host TCP Socket
+        self.server_address = ('192.168.0.198', 3001)
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
-    # HH:MM:SS' <message>.
+    # HH:MM:SS:' <message>.
     @staticmethod
     def printwt(msg):
         """ Print message with current time stamp"""
 
-        current_date_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_date_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
         print(f'[{current_date_time}] {msg}')
 
     # 3. configure_client() - Creates a UDP socket that uses IPv4 and binds the server to a specific address.
@@ -29,68 +34,61 @@ class UDPClient:
         """Configure the client to use UDP protocol with IPv4 addressing"""
 
         # 3.1. Create the UDP socket with IPv4 Addressing
-        self.printwt('Creating client socket...')
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.printwt(f'Create client to {self.host}: {self.port}')
+        self.printwt('Creating UDP client socket...')
+        self.UDP_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.printwt(f'Binding UDP client...')
+        self.UDP_sock.bind((self.host, self.UDP_port))
+        self.UDP_port = self.UDP_sock.getsockname()[1]
+        self.printwt(f'Bound UDP client to {self.host}: {self.UDP_port}')
 
-    # 4. interact_with_server() - Send name to server and receive phone number from server
-    def interact_with_server(self):
-        """ Send request to a UDP Server and receive reply from it"""
+        self.printwt('Creating TCP client socket...')
+        self.TCP_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.printwt('Binding TCP client socket...')
+        self.TCP_sock.bind((self.host, self.TCP_port))
+        self.TCP_port = self.TCP_sock.getsockname()[1]
+        self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
 
-        # 4.1. Try to perform operations
-        try:
+    # TODO Send request to the server,
+    # Register
+    # de_register
+    # publish
+    # remove
+    # retrieve_all
+    # retrieve_info
+    # search_file
+    # download - sends request to server to download from another client
+    # update_context
 
-            # 4.1.1. TODO Send request to the server, First bits are reserved for client requests types
-            # 0000 = register
-            # 0001 = de_register
-            # 0010 = publish
-            # 0011 = remove
-            # 0100 = retrieve_all
-            # 0101 = retrieve_info
-            # 0110 = search_file
-            # 0111 = download
-            # 1000 = update_context
+    # 4. Interactions with the server
 
-            # to remove, just an example  ---------------------------------------------------------------------------
+    # 4.1. register(name) - registers the client with the server
+    def register(self, name):
+        """ Send the server a register request and receive a reply """
 
-            # send data to server
-            self.printwt('Sending name to the server to get phone number')
-            name = 'Alex'
-            self.sock.sendto(name.encode('utf-8'), (self.host, 3001))
-            self.printwt('[ SENT ]')
-            print('\n', name, '\n')
+        # TODO send the server formatted data that it can expect for registration
+        self.printwt('Attempting to register with the server...')
+        client_registration_object = register.Register(name, self.host, self.UDP_port,
+                                                       self.TCP_port)
+        self.printwt('Sending registration data to server...')
+        self.printwt(client_registration_object.getHeader())
 
-            # -------------------------------------------------------------------------------------------------------
+        # save the request in a log file and send it to the server
+        self.UDP_sock.sendto(client_registration_object.getHeader().encode('utf-8'), self.server_address)
+        # wait for server to respond, if no response send it again
 
-            # 4.1.2 TODO Receive response from server.
-
-            # to remove, just an example ----------------------------------------------------------------------------
-
-            # receive data from server
-            resp, server_address = self.sock.recvfrom(1024)
-            self.printwt('[ Received ]')
-            print('\n', resp.decode(), '\n')
-            self.printwt('Interaction completed successfully...')
-
-            # -------------------------------------------------------------------------------------------------------\
-
-        # 4.2. Handle any errors
-        except OSError as err:
-            print(err)
-
-        # 4.3 Close the socket
-        finally:
-            # close socket
-            self.printwt('Closing socket...')
-            self.sock.close()
-            self.printwt('Socket closed')
+    def close_sockets(self):
+        self.printwt('Closing sockets...')
+        self.UDP_sock.close()
+        self.TCP_sock.close()
+        self.printwt('Sockets closed')
 
 
 def main():
     """ Create a UDP Client, send message to a UDP server and receive reply"""
-    udp_client = UDPClient(socket.gethostbyname(socket.gethostname()), 0)
-    udp_client.configure_client()
-    udp_client.interact_with_server()
+    client = Client(socket.gethostbyname(socket.gethostname()), 0, 0)
+    client.configure_client()
+    client.register('Tom')
+    client.close_sockets()
 
 
 if __name__ == '__main__':
