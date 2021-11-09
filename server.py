@@ -53,26 +53,10 @@ class UDPServer:
         except OSError as err:
             print(err)
 
-    # 5. handle_request() - Handles the clients request.
+    # 5. handle_request() - Handles the clients request. This function is overridden by the multi client server
     def handle_request(self, client_data, client_address):
         """ Handle the client"""
 
-        # 5.1. Handle the clients request, just an example ----------------------------------------------------------
-        name = client_data.decode('utf-8')
-
-        # to remove, just an example ---------------------------------------------------------------------------------
-
-        resp = self.get_phone_no(name)
-        self.printwt(f'[ REQUEST from {client_address} ]')
-        print('\n', name, '\n')
-
-        # 6.3 Send response back to the client
-        # send response to the client
-        self.printwt(f'[ RESPONSE to {client_address} ]')
-        self.sock.sendto(resp.encode('utf-8'), client_address)
-        print('\n', resp, '\n')
-
-    # 6. get_phone_no() - Get the phone number of the given name, is if doesn't exists return appropriate error message.
 
     @staticmethod
     def get_phone_no(name):
