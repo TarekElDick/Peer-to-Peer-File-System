@@ -14,7 +14,7 @@ class Register(request.clientRequest):
         pprint(vars(self))
 
     def getHeader(self):
-        header_string = ' ' + self.request_type + ' ' + str(self.rid) + ' ' + self.name + ' ' + str(self.host) + ' ' + str(self.udp_socket) + ' ' + str(self.tcp_socket) + '\r\n'
+        header_string = '\n['+self.request_type + ' | ' + str(self.rid) + ' | ' + self.name + ' | ' + str(self.host) + ' | ' + str(self.udp_socket) + ' | ' + str(self.tcp_socket) + ']\n'
         header_length = len(header_string)
         header_final = str(header_length) + header_string
-        return header_final
+        return header_string

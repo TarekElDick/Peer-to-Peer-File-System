@@ -17,6 +17,7 @@ class Client:
         self.UDP_sock = None  # Host UDP Socket
         self.TCP_sock = None  # Host TCP Socket
         self.server_address = ('192.168.0.198', 3001)
+        self.timeout = 5
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -70,11 +71,19 @@ class Client:
         client_registration_object = register.Register(name, self.host, self.UDP_port,
                                                        self.TCP_port)
         self.printwt('Sending registration data to server...')
-        self.printwt(client_registration_object.getHeader())
+        print(client_registration_object.getHeader())
 
         # save the request in a log file and send it to the server
-        self.UDP_sock.sendto(client_registration_object.getHeader().encode('utf-8'), self.server_address)
-        # wait for server to respond, if no response send it again
+        self.UDP_sock.sendto(pickle.dumps(client_registration_object), self.server_address)
+        self.printwt('Sent Registration Data')
+        # Wait for server to respond, TODO if no response send it again
+
+        try:
+            msg_from_server, server_address = self.UDP_sock.recvfrom(1024)
+            self.printwt(msg_from_server.decode())
+        except socket.timeout as err:
+            self.printwt('Server did not respond, attempting to register again')
+            self.register(self.name)
 
     def close_sockets(self):
         self.printwt('Closing sockets...')
@@ -86,9 +95,17 @@ class Client:
 def main():
     """ Create a UDP Client, send message to a UDP server and receive reply"""
     client = Client(socket.gethostbyname(socket.gethostname()), 0, 0)
+    client1 = Client(socket.gethostbyname(socket.gethostname()), 0, 0)
+    client2 = Client(socket.gethostbyname(socket.gethostname()), 0, 0)
     client.configure_client()
+    client1.configure_client()
+    client2.configure_client()
     client.register('Tom')
+    client1.register('Cat')
+    client2.register('Tom')
     client.close_sockets()
+    client2.close_sockets()
+    client1.close_sockets()
 
 
 if __name__ == '__main__':

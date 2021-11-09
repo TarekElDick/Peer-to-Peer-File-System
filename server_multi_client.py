@@ -3,6 +3,7 @@ import pickle
 import socket
 import threading
 import server
+import register
 from datetime import datetime
 
 
@@ -14,26 +15,51 @@ class serverMultiClient(server.UDPServer):
     def __init__(self, host, port):
         super().__init__(host, port)
         self.socket_lock = threading.Lock()
+        self.list_of_registered_clients = list()
+        self.tuple_of_files = None
 
     # 2. handle_request() - Handle client's request and send back the response after acquiring lock
     def handle_request(self, client_data, client_address):
         """ Handle the client """
 
-        # TODO 5.1.1 Handle request client requests. First bits are reserved for client requests types
-        # 0000 = register
-        # 0001 = de_register
-        # 0010 = publish
-        # 0011 = remove
-        # 0100 = retrieve_all
-        # 0101 = retrieve_info
-        # 0110 = search_file
-        # 0111 = download
-        # 1000 = update_context
-
         self.printwt(f'Received request from client {client_address}')
-        request = client_data.decode('utf-8')
-        self.printwt(request)
-        #reponds to server for registration and check if already responded to that
+        request = pickle.loads(client_data)
+
+        # Find out what kind of object it is and send it to the designated function
+        if isinstance(request, register.Register):
+            self.try_registering(request, client_address)
+        #if isinstance(request, de_register.deRegistering)
+            #pass
+
+    def try_registering(self, request, client_address):
+        # Check if the client is already registered, if not add the client name to the list of clients, if already registered then deny the request
+        if self.check_if_client(request):
+            msg_to_client = '[REGISTER-DENIED' + ' | ' + str(request.rid) + ' | ' + 'Client already registered]'
+            self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+
+        # register the client and inform the client
+        msg_to_client = '[REGISTERED' + ' | ' + str(request.rid) + ']'
+        self.printwt(msg_to_client)
+        self.list_of_registered_clients.append(request.name)
+        self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+    # TODO 5.1.1 Handle request client requests.
+    # de_register
+    # publish
+    # remove
+    # retrieve_all
+    # retrieve_info
+    # search_file
+    # download
+    # update_context
+
+    def check_if_client(self, request):
+        for i in self.list_of_registered_clients:
+            if i == request.name:
+                return True
+        return False
 
     # 3. wait_for_client() - Override the server's wait_for_client() method to handle multiple clients by using an
     # infinite loop
