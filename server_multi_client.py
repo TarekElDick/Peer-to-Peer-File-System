@@ -45,7 +45,7 @@ class serverMultiClient(server.UDPServer):
         # register the client and inform the client
         msg_to_client = '[REGISTERED' + ' | ' + str(request.rid) + ']'
         self.printwt(msg_to_client)
-        self.list_of_registered_clients.append(request.name)
+        self.list_of_registered_clients.append(request)
         self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
 
     def try_unregistering(self, request, client_address):
