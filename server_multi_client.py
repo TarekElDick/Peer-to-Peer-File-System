@@ -9,6 +9,9 @@ from datetime import datetime
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
 # only one thread uses the sendto() method at a time
+import unregister
+
+
 class serverMultiClient(server.UDPServer):
     """ A simple UDP Server for handling multiple clients """
 
@@ -16,7 +19,7 @@ class serverMultiClient(server.UDPServer):
         super().__init__(host, port)
         self.socket_lock = threading.Lock()
         self.list_of_registered_clients = list()
-        self.tuple_of_files = None
+        self.list_of_tuple_of_files = None
 
     # 2. handle_request() - Handle client's request and send back the response after acquiring lock
     def handle_request(self, client_data, client_address):
@@ -28,12 +31,12 @@ class serverMultiClient(server.UDPServer):
         # Find out what kind of object it is and send it to the designated function
         if isinstance(request, register.Register):
             self.try_registering(request, client_address)
-        #if isinstance(request, de_register.deRegistering)
-            #pass
+        elif isinstance(request, unregister.Unregister):
+            self.try_unregistering(request, client_address)
 
     def try_registering(self, request, client_address):
         # Check if the client is already registered, if not add the client name to the list of clients, if already registered then deny the request
-        if self.check_if_client(request):
+        if self.check_if_client(request): # might be able to just send request.name, fard mara
             msg_to_client = '[REGISTER-DENIED' + ' | ' + str(request.rid) + ' | ' + 'Client already registered]'
             self.printwt(msg_to_client)
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
@@ -44,6 +47,19 @@ class serverMultiClient(server.UDPServer):
         self.printwt(msg_to_client)
         self.list_of_registered_clients.append(request.name)
         self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+    def try_unregistering(self, request, client_address):
+        if self.check_if_client(request):
+            # if the client is registered then unregister them
+            for i in self.list_of_registered_clients:
+                if i == request.name:
+                    # delete the client from the database/list
+                    self.list_of_registered_clients.remove(i)
+                    msg_to_client = '[DE-REGISTERED' + ' | ' + str(request.rid) + ']'
+                    self.printwt(msg_to_client)
+                    self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+                    return
+        self.printwt('Ignoring request, client not registered')
 
     # TODO 5.1.1 Handle request client requests.
     # de_register
