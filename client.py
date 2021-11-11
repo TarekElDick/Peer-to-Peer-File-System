@@ -1,6 +1,7 @@
 # 0. Import the socket and datetime module
 import socket
 import register
+import unregister
 import pickle
 from datetime import datetime
 
@@ -66,24 +67,51 @@ class Client:
     def register(self, name):
         """ Send the server a register request and receive a reply """
 
-        # TODO send the server formatted data that it can expect for registration
+        # Send the server formatted data that it can expect for registration
         self.printwt('Attempting to register with the server...')
         client_registration_object = register.Register(name, self.host, self.UDP_port,
                                                        self.TCP_port)
         self.printwt('Sending registration data to server...')
         print(client_registration_object.getHeader())
 
-        # save the request in a log file and send it to the server
+        # TODO ( save the request in a log ) and send it to the server
         self.UDP_sock.sendto(pickle.dumps(client_registration_object), self.server_address)
         self.printwt('Sent Registration Data')
-        # Wait for server to respond, TODO if no response send it again
+        # TODO Wait for server to respond, if no response send it again
 
         try:
             msg_from_server, server_address = self.UDP_sock.recvfrom(1024)
+            # TODO look for the reply that matches our Request ID
+            self.printwt('Received Registration Response')
             self.printwt(msg_from_server.decode())
         except socket.timeout as err:
             self.printwt('Server did not respond, attempting to register again')
             self.register(self.name)
+
+    #4.2 unregister(name) - unregister the client with the server
+    def unregister(self, name):
+        """ Send the server a unregister request and receive a reply"""
+
+        self.printwt('Attempting to unregister with the server...')
+        client_unregister_object = unregister.Unregister(name)
+
+        self.printwt('Sending de-registration data to server...')
+        print(client_unregister_object.getHeader())
+
+        # TODO ( save the request in a log ) and send it to the server
+        self.UDP_sock.sendto(pickle.dumps(client_unregister_object), self.server_address)
+        self.printwt('Sent De-registration Data')
+        # TODO Wait for server to respond, if no response send it again
+
+        # TODO maybe make this into one function.
+        try:
+            msg_from_server, server_address = self.UDP_sock.recvfrom(1024)
+            # TODO look for the reply that matches our Request ID
+            self.printwt('Received De-Registration Response')
+            self.printwt(msg_from_server.decode())
+        except socket.timeout as err:
+            self.printwt('Server did not respond, attempting to register again')
+            self.unregister(self.name)
 
     def close_sockets(self):
         self.printwt('Closing sockets...')
@@ -95,17 +123,12 @@ class Client:
 def main():
     """ Create a UDP Client, send message to a UDP server and receive reply"""
     client = Client(socket.gethostbyname(socket.gethostname()), 0, 0)
-    client1 = Client(socket.gethostbyname(socket.gethostname()), 0, 0)
-    client2 = Client(socket.gethostbyname(socket.gethostname()), 0, 0)
     client.configure_client()
-    client1.configure_client()
-    client2.configure_client()
     client.register('Tom')
-    client1.register('Cat')
-    client2.register('Tom')
+    client.unregister('Tom')
+    client.unregister('Tom')
     client.close_sockets()
-    client2.close_sockets()
-    client1.close_sockets()
+
 
 
 if __name__ == '__main__':
