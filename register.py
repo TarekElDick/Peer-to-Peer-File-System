@@ -9,10 +9,6 @@ class Register(request.clientRequest):
         self.udp_socket = udp_socket
         self.tcp_socket = tcp_socket
 
-    def printRequest(self):
-        from pprint import pprint
-        pprint(vars(self))
-
     def getHeader(self):
         header_string = '\n['+self.request_type + ' | ' + str(self.rid) + ' | ' + self.name + ' | ' + str(self.host) + ' | ' + str(self.udp_socket) + ' | ' + str(self.tcp_socket) + ']\n'
         return header_string
