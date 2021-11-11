@@ -3,7 +3,6 @@ import pickle
 import socket
 import threading
 
-import request
 import server
 import register
 from datetime import datetime
@@ -27,17 +26,18 @@ class serverMultiClient(server.UDPServer):
         """ Handle the client """
 
         self.printwt(f'Received request from client {client_address}')
-        request = pickle.loads(client_data)
+        client_request = pickle.loads(client_data)
 
         # Find out what kind of object it is and send it to the designated function
-        if isinstance(request, register.Register):
-            self.try_registering(request, client_address)
-        elif isinstance(request, unregister.Unregister):
-            self.try_unregistering(request, client_address)
+        if isinstance(client_request, register.Register):
+            self.try_registering(client_request, client_address)
+        elif isinstance(client_request, unregister.Unregister):
+            self.try_unregistering(client_request, client_address)
+        #elif isinstance(client_request, publish.Publish):
 
     def try_registering(self, re_request, client_address):
         # Check if the client is already registered, if not add the client name to the list of clients, if already registered then deny the request
-        if self.check_if_client(re_request):  # might be able to just send request.name, fard mara
+        if self.check_if_client(re_request):  # might be able to just send request.name.
             msg_to_client = '[REGISTER-DENIED' + ' | ' + str(re_request.rid) + ' | ' + 'Client already registered]'
             self.printwt(msg_to_client)
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)

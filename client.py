@@ -18,7 +18,7 @@ class Client:
         self.UDP_sock = None  # Host UDP Socket
         self.TCP_sock = None  # Host TCP Socket
         self.server_address = ('192.168.0.198', 3001)
-        self.timeout = 5
+        self.timeout = 5  # TODO still not implemented
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -51,8 +51,6 @@ class Client:
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
 
     # TODO Send request to the server,
-    # Register
-    # de_register
     # publish
     # remove
     # retrieve_all
@@ -88,7 +86,7 @@ class Client:
             self.printwt('Server did not respond, attempting to register again')
             self.register(self.name)
 
-    #4.2 unregister(name) - unregister the client with the server
+    # 4.2 unregister(name) - unregister the client with the server
     def unregister(self, name):
         """ Send the server a unregister request and receive a reply"""
 
@@ -128,7 +126,6 @@ def main():
     client.unregister('Tom')
     client.unregister('Tom')
     client.close_sockets()
-
 
 
 if __name__ == '__main__':
