@@ -4,12 +4,11 @@ import socket
 import threading
 
 import server
-import register
-from datetime import datetime
+from Client_Requests_Classes import register, unregister, update_contact
+
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
 # only one thread uses the sendto() method at a time
-import unregister
 
 
 class serverMultiClient(server.UDPServer):
@@ -33,7 +32,8 @@ class serverMultiClient(server.UDPServer):
             self.try_registering(client_request, client_address)
         elif isinstance(client_request, unregister.Unregister):
             self.try_unregistering(client_request, client_address)
-        #elif isinstance(client_request, publish.Publish):
+        elif isinstance(client_request, update_contact.UpdateContact):
+            self.try_updatingContact(client_request,client_address)
 
     def try_registering(self, re_request, client_address):
         # Check if the client is already registered, if not add the client name to the list of clients, if already registered then deny the request
@@ -62,6 +62,24 @@ class serverMultiClient(server.UDPServer):
                         self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
                         return
         self.printwt('Ignoring request, client not registered')
+
+    def try_updatingContact(self, up_request, client_address):
+        if self.check_if_client(up_request):
+            # if the client is registered then we can update the register object
+            for obj in self.list_of_registered_clients:
+                if isinstance(obj, register.Register):  # for checking if client they are all register objects but isinstance is important to allow us to call obj.name
+                    if obj.name == up_request.name:
+                        obj.host = up_request.host
+                        obj.udp_socket = up_request.udp_socket
+                        obj.tcp_socket = up_request.tcp_socket
+                        msg_to_client = '[UPDATE-CONFIRMED' + ' | ' + str(up_request.rid) + ' | ' + str(up_request.name) + ' | ' + str(up_request.host) + ' | ' + str(up_request.udp_socket) + ' | ' + str(up_request.tcp_socket) + ']'
+                        self.printwt(msg_to_client)
+                        self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+        else:
+            msg_to_client = '[UPDATE-DENIED' + ' | ' + str(up_request.rid) + ' | ' + str(up_request.name) + ' | ' + 'Name does not Exist]'
+            self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
 
     # TODO 5.1.1 Handle request client requests.
     # publish
@@ -100,7 +118,6 @@ class serverMultiClient(server.UDPServer):
 
         except KeyboardInterrupt:
             self.shutdown_server()
-
 
 # 4. main() - Driver code to test the program
 def main():

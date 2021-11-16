@@ -1,7 +1,6 @@
 # 0. Import the socket and datetime module
 import socket
-import register
-import unregister
+from Client_Requests_Classes import register, unregister, update_contact
 import pickle
 from datetime import datetime
 
@@ -111,6 +110,48 @@ class Client:
             self.printwt('Server did not respond, attempting to register again')
             self.unregister(self.name)
 
+    # 4.3 updateContact()  - client can update their client information
+    def updateContact(self, name, ip_address, udp_socket, tcp_socket):
+        """ Send the server a updateContact request and receive a reply"""
+
+        # must update this clients sockets also
+        self.host = ip_address
+        self.UDP_port = udp_socket
+        self.TCP_port = tcp_socket
+
+        # close the old sockets and create and bind the new ones and update the binding
+        self.printwt('Closing old sockets and rebinding the new ones...')
+        self.UDP_sock.close()
+        self.TCP_sock.close()
+
+        self.UDP_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.UDP_sock.bind((self.host, self.UDP_port))
+        self.UDP_port = self.UDP_sock.getsockname()[1]
+        self.printwt(f'Bound UDP client to {self.host}: {self.UDP_port}')
+
+        self.TCP_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.TCP_sock.bind((self.host, self.TCP_port))
+        self.TCP_port = self.TCP_sock.getsockname()[1]
+        self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
+
+        self.printwt('Attempting to update contact with the server...')
+        # Create the updateContact object
+        client_update_contact_object = update_contact.UpdateContact(name, self.host, self.UDP_port, self.TCP_port)
+
+        # send the object to the server
+        self.printwt('Sending update contact data to server...')
+        print(client_update_contact_object.getHeader())
+        self.UDP_sock.sendto(pickle.dumps(client_update_contact_object), self.server_address)
+
+        # TODO maybe make this into one function.
+        try:
+            msg_from_server, server_address = self.UDP_sock.recvfrom(1024)
+            # TODO look for the reply that matches our Request ID
+            self.printwt('Received Update Contact Response')
+            self.printwt(msg_from_server.decode())
+        except socket.timeout as err:
+            self.printwt('Server did not respond, attempting to register again')
+
     def close_sockets(self):
         self.printwt('Closing sockets...')
         self.UDP_sock.close()
@@ -123,8 +164,7 @@ def main():
     client = Client(socket.gethostbyname(socket.gethostname()), 0, 0)
     client.configure_client()
     client.register('Tom')
-    client.unregister('Tom')
-    client.unregister('Tom')
+    client.updateContact('Tom', socket.gethostbyname(socket.gethostname()), 4000, 5000)
     client.close_sockets()
 
 

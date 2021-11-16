@@ -1,4 +1,4 @@
-import request
+from Client_Requests_Classes import request
 
 
 class Unregister(request.clientRequest):
