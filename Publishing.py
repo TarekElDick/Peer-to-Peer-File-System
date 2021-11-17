@@ -20,6 +20,16 @@ class Publishing:
                 # sendfile
             else:
                 print("file will be fragmented")
+                data = []
+                with open("file_to_upload.txt") as f:
+                    while True:
+                        d = f.read(200)
+                        if not d:
+                            break
+                        else:
+                            data.append(d)
+                a = data[0]
+                print(a)
                 # call split
                 #split(a_file, 200)
                 # call send
