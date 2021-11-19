@@ -72,6 +72,7 @@ class serverMultiClient(server.UDPServer):
                         return
         self.printwt('Ignoring request, client not registered')
 
+
     def try_retrieve_all(self, up_request, client_address):
         list_of_files = " "
         msg_to_client = "RETRIEVE-ALL  |  " +  str(up_request.rid)
@@ -133,8 +134,6 @@ class serverMultiClient(server.UDPServer):
        #     self.printwt(msg_to_client)
        #     self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
        #     return
-
-
     def try_updatingContact(self, up_request, client_address):
         if self.check_if_client(up_request):
             # if the client is registered then we can update the register object
