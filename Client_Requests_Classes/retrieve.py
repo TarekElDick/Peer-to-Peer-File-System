@@ -11,5 +11,5 @@ class Retrieve(request.clientRequest):
 
 
     def getHeader(self):
-        header_string = '\n['+self.request_type + ' | ' + str(self.rid) +  ']\n' # retrieve_all
+        header_string = '\n['+self.request_type + ' | ' + str(self.rid) +  ']\n'
         return header_string
