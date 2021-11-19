@@ -3,6 +3,7 @@ import socket
 from Client_Requests_Classes import register, unregister, update_contact, retrieve
 import pickle
 from datetime import datetime
+from config import BUFFER_SIZE
 
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
@@ -20,6 +21,7 @@ class Client:
         self.server_address = ('10.0.0.181', 3001)
       #  self.server_address = ('127.0.0.1', 3001)
         self.timeout = 5  # TODO still not implemented
+        self.BUFFER_SIZE = BUFFER_SIZE # TODO update all variables below , don't forget
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -34,7 +36,7 @@ class Client:
     # socket.SOCK.DGRAM specifies that the connection type will be UDP
     # socket.AF_INET specifies that IPv4 will be used for addressing.
     def configure_client(self):
-        """Configure the client to use UDP protocol with IPv4 addressing"""
+        """Configure the client to use UDP and TCP protocol with IPv4 addressing"""
 
         # 3.1. Create the UDP socket with IPv4 Addressing
         self.printwt('Creating UDP client socket...')
@@ -72,20 +74,27 @@ class Client:
                                                        self.TCP_port)
         self.printwt('Sending registration data to server...')
         print(client_registration_object.getHeader())
+        local_data = pickle.dumps(client_registration_object)
 
-        # TODO ( save the request in a log ) and send it to the server
-        self.UDP_sock.sendto(pickle.dumps(client_registration_object), self.server_address)
-        self.printwt('Sent Registration Data')
-        # TODO Wait for server to respond, if no response send it again
-
-        try:
-            msg_from_server, server_address = self.UDP_sock.recvfrom(1024)
-            # TODO look for the reply that matches our Request ID
-            self.printwt('Received Registration Response')
-            self.printwt(msg_from_server.decode())
-        except socket.timeout as err:
-            self.printwt('Server did not respond, attempting to register again')
-            self.register(self.name)
+        flag = True
+        counter = 5
+        while flag:
+            # try to receive reply from server
+            try:
+                if counter == 1:
+                    flag = False
+                self.UDP_sock.sendto(local_data, self.server_address)
+                self.printwt('Sent Registration Data')
+                self.UDP_sock.settimeout(5)
+                self.printwt('Trying ' + str(counter) + ' more times if failed to receive reply')
+                # TODO get the reply for my specific request
+                msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
+                self.printwt('Received Registration Response')
+                self.printwt(msg_from_server.decode())
+                flag = False
+            except socket.timeout:
+                counter -= 1
+                self.printwt('Server did not respond, attempting to register again')
 
     # 4.2 unregister(name) - unregister the client with the server
     def unregister(self, name):
@@ -108,7 +117,7 @@ class Client:
             # TODO look for the reply that matches our Request ID
             self.printwt('Received De-Registration Response')
             self.printwt(msg_from_server.decode())
-        except socket.timeout as err:
+        except socket.timeout:
             self.printwt('Server did not respond, attempting to register again')
             self.unregister(self.name)
     def retrieve(self):
@@ -214,7 +223,7 @@ class Client:
             # TODO look for the reply that matches our Request ID
             self.printwt('Received Update Contact Response')
             self.printwt(msg_from_server.decode())
-        except socket.timeout as err:
+        except socket.timeout:
             self.printwt('Server did not respond, attempting to register again')
 
     def close_sockets(self):
@@ -231,6 +240,8 @@ def main():
    # client.register('Tom')
     client.retrieve()
     client.register('Tom')
+    client.register('Tom')
+    client.unregister('Cat')
     client.updateContact('Tom', socket.gethostbyname(socket.gethostname()), 4000, 5000)
     client.close_sockets()
 
