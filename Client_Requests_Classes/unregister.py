@@ -7,5 +7,5 @@ class Unregister(request.clientRequest):
         self.name = name
 
     def getHeader(self):
-        header_string = '\n[' + self.request_type + ' | ' + str(self.rid) + ' | ' + self.name + ']\n'
+        header_string = '\n[' + self.request_type + ' | ' + str(self.rid) + ' | ' + str(self.name) + ']\n'
         return header_string
