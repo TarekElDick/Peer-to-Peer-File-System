@@ -134,34 +134,42 @@ class Client:
     def sendToServer(self, command_object, requestType):
         flag = True
         trials = 5
+        # Create a dedicated UDP port to send data to the server. 1 port that sends, and another that receives.
+        UDP_sending_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        UDP_sending_sock.bind((self.host, 0))
         while flag:
             # try to send the command and receive a reply from the server
             try:
-                self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
+                UDP_sending_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
                 # once we sent the request, remove from the amount of trials if reply not received.
                 trials -= 1
                 if trials == 0:
                     # if we exceeded the amount of trials we exit
                     flag = False
-                    self.printwt('Attempted to send ' + requestType + ' request to server and failed multiple times')
+                    self.printwt('Attempted to send ' + requestType + ' request to server and failed 5 times')
+                    UDP_sending_sock.close()  # close our sending socket once we exceed the amount of trials
                     break
             except socket.error:
                 # if sending failed
                 self.printwt('Failed to send ' + requestType + ' request to server')
+                UDP_sending_sock.close()  # close our sending socket if we fail to send.
 
-            # try to receive a reply from the server
+            # try to receive a reply from the server.
             try:
                 msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
+                self.printwt(f'Received {requestType} reply from server : {server_address}')
                 self.printwt(msg_from_server.decode())
                 # if we received a reply, set the flag to false, so we don't try again
                 flag = False
+                UDP_sending_sock.close()  # close our sending socket once we receive a reply.
             except socket.timeout:
                 self.printwt(
                     'Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
             except socket.error:
                 self.printwt(
                     "ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host : Server might be offline")
+                UDP_sending_sock.close()  # close our sending socket when we fail
                 flag = False
 
     def close_sockets(self):
@@ -173,9 +181,12 @@ class Client:
 
 def main():
     """ Create a UDP Client, send message to a UDP server and receive reply"""
-    tom = Client('Tom', socket.gethostbyname(socket.gethostname()), 0, 0)
+    tom = Client('Tom', socket.gethostbyname(socket.gethostname()), 4000, 5000)
     tom.configure_client()
     tom.register()
+    tom.unregister()
+    tom.register()
+
 
 
 if __name__ == '__main__':
