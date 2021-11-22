@@ -1,35 +1,29 @@
+import socket
+from Client_Requests_Classes import register, unregister, update_contact, retrieve,publish, publish_denied,published_reply,remove_denied,remove,removed
+import pickle
+from datetime import datetime
+
+
 class Publishing:
 
-    def __init__(self, name):
+    def __init__(self, name, list_of_files=[], list_of_files_to_remove=[]):
         super().__init__('Publishing')
         self.name = name
+        self.list_of_files = list_of_files
+        self.list_of_files_to_remove = list_of_files_to_remove
 
+# client send publish request
+    def publish_request(self):
+        # Send the server formatted data that it can expect for registration.
+        self.printwt('Attempting to publish a file ...')
 
-# open text file and count the number of characters
-    with open("file_to_upload.txt", "rt") as a_file:
-        data = a_file.read()
-        number_of_characters = len(data)
-        print('Number of characters in text file :', number_of_characters)
+        # Create a registration object that can be sent to the server using the pickle library.
+        client_publish_req_object = publish.publish_req(self.name, self.list_of_files)
+        print(client_publish_req_object.getHeader())
 
-        if int(number_of_characters) < 1:
-            print("file is empty")
-            exit()
-        elif int(number_of_characters) > 1:
-            if int(number_of_characters) <= 200:
-                print("file will be sent in 1 segment")
-                # sendfile
-            else:
-                print("file will be fragmented")
-                data = []
-                with open("file_to_upload.txt") as f:
-                    while True:
-                        d = f.read(200)
-                        if not d:
-                            break
-                        else:
-                            data.append(d)
-                a = data[0]
-                print(a)
-                # call split
-                #split(a_file, 200)
-                # call send
+        # create a local variable that holds the serialized registration object to keep code neat and tidy.
+        p_object = pickle.dumps(client_publish_req_object)
+
+        # send the pickled object to the server using a function we define below. #5 sendToServer().
+        self.printwt('Sending registration data to server...')
+        self.sendToServer(publish_object, 'register')
