@@ -1,6 +1,7 @@
 # 0. Import the socket and datetime module
 import socket
-from Client_Requests_Classes import register, unregister, update_contact, retrieve
+from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish
+import Publishing
 import pickle
 from datetime import datetime
 from config import BUFFER_SIZE, SERVER_ADDRESS

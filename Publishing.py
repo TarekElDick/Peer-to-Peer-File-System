@@ -1,29 +1,29 @@
-import socket
-from Client_Requests_Classes import register, unregister, update_contact, retrieve,publish, publish_denied,published_reply,remove_denied,remove,removed
+import glob
+import os
 import pickle
-from datetime import datetime
+
+from Client_Requests_Classes import publish
 
 
 class Publishing:
 
-    def __init__(self, name, list_of_files=[], list_of_files_to_remove=[]):
+    def __init__(self, name, list_of_files=None, list_of_files_to_remove=None):
         super().__init__('Publishing')
+        if list_of_files is None:
+            list_of_files = []
+        # if list_of_files_to_remove is None:
+        #   list_of_files_to_remove = []
         self.name = name
         self.list_of_files = list_of_files
         self.list_of_files_to_remove = list_of_files_to_remove
 
-# client send publish request
-    def publish_request(self):
-        # Send the server formatted data that it can expect for registration.
-        self.printwt('Attempting to publish a file ...')
-
-        # Create a registration object that can be sent to the server using the pickle library.
-        client_publish_req_object = publish.publish_req(self.name, self.list_of_files)
-        print(client_publish_req_object.getHeader())
-
-        # create a local variable that holds the serialized registration object to keep code neat and tidy.
-        p_object = pickle.dumps(client_publish_req_object)
-
-        # send the pickled object to the server using a function we define below. #5 sendToServer().
-        self.printwt('Sending registration data to server...')
-        self.sendToServer(publish_object, 'register')
+# search for a file in a list
+    def get_files(filename, search_path):
+        result = []
+        # Wlaking top-down from the root
+        for root, dir, files in os.walk(search_path):
+            if filename in files:
+                result.append(os.path.join(root, filename))
+        return result
+    # test and to be used in main
+    print(get_files("file_to_upload.txt", ".\Data"))
