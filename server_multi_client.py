@@ -44,7 +44,8 @@ class serverMultiClient(server.UDPServer):
         print(re_request.getHeader())
         client_address = (re_request.host, re_request.udp_socket)
 
-        # Check if the client is already registered, if not add the client name to the list of clients, if already registered then deny the request
+        # Check if the client is already registered, if not add the client name to the list of clients, if already
+        # registered then deny the request
         if self.check_if_client(re_request):
             msg_to_client = '[REGISTER-DENIED' + ' | ' + str(re_request.rid) + ' | ' + 'Client already registered]'
             self.printwt(msg_to_client)
@@ -93,7 +94,8 @@ class serverMultiClient(server.UDPServer):
             # if the client is registered then we can update the register object
             for obj in self.list_of_registered_clients:
                 if isinstance(obj,
-                              register.Register):  # for checking if client they are all register objects but isinstance is important to allow us to call obj.name
+                              register.Register):  # for checking if client they are all register objects but
+                    # isinstance is important to allow us to call obj.name
                     if obj.name == up_request.name:
                         obj.host = up_request.host
                         obj.udp_socket = up_request.udp_socket
@@ -165,11 +167,11 @@ class serverMultiClient(server.UDPServer):
         self.printwt('Remove_Denied, File_Doesnt exist')
         return
 
-
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
-                          register.Register):  # for checking if client they are all register objects but isinstance is important to allow us to call obj.name
+                          register.Register):  # for checking if client they are all register objects but isinstance
+                # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return True
         return False
@@ -186,7 +188,8 @@ class serverMultiClient(server.UDPServer):
     def get_client_udp_address(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
-                          register.Register):  # for checking if client they are all register objects but isinstance is important to allow us to call obj.name
+                          register.Register):  # for checking if client they are all register objects but isinstance
+                # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return obj.host, obj.udp_socket
 

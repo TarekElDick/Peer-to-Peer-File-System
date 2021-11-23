@@ -2,9 +2,11 @@ from Client_Requests_Classes import request
 
 
 class publish_req(request.clientRequest):
-    def __init__(self, name, list_of_files=[]) -> object:
+    def __init__(self, name,host,udp_socket, list_of_files=[]) -> object:
         super().__init__('publish_req')
         self.name = name
+        self.host = host
+        self.udp_socket = udp_socket
         self.list_of_files = list_of_files
         # self.file_name = file_name
 
