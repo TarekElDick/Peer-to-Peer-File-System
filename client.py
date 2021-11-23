@@ -2,6 +2,7 @@
 import socket
 from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
 import Publishing
+import os
 import pickle
 from datetime import datetime
 from config import BUFFER_SIZE, SERVER_ADDRESS
@@ -19,6 +20,7 @@ class Client:
         self.timeout = 5
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = SERVER_ADDRESS
+        #self.file_name = file_name
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -109,7 +111,16 @@ class Client:
         self.sendToServer(retrieve_object, 'retrieve-all')
 
     # TODO 4.6 retrieveInfoT() - retrieve info about a specific peer
-    # TODO 4.7 searchFile() -
+
+    # TODO 4.7 searchFile() - check with Aida if that's what is required
+    def get_file(file_name, search_path):
+        result = []
+        # Wlaking top-down from the root
+        for root, dir, files in os.walk(search_path):
+            if file_name in files:
+                result.append(os.path.join(root, file_name))
+        return result
+
     # TODO 4.8 download() -
 
     # 4.9 updateContact()  - client can update their client information
