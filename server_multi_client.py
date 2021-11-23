@@ -16,7 +16,7 @@ class serverMultiClient(server.UDPServer):
         super().__init__(host, port)
         self.socket_lock = threading.Lock()
         self.list_of_registered_clients = list()
-        self.list_of_available_files = list()
+        self.list_of_client_files = list()
         self.list_of_acknowledgements = list()
 
     # 2. handle_request() - Handle client's request and send back the response after acquiring lock
@@ -34,11 +34,14 @@ class serverMultiClient(server.UDPServer):
             if not self.check_if_already_ack(client_request):
                 self.try_unregistering(client_request)
         elif isinstance(client_request, update_contact.UpdateContact):
-            self.try_updatingContact(client_request)
+            if not self.check_if_already_ack(client_request):
+                self.try_updatingContact(client_request)
         elif isinstance(client_request, publish.publish_req):
-            self.try_publishing(client_request)
+            if not self.check_if_already_ack(client_request):
+                self.try_publishing(client_request)
         elif isinstance(client_request, remove.remove_req):
-            self.try_removeFile(client_request)
+            if not self.check_if_already_ack(client_request):
+                self.try_removeFile(client_request)
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
@@ -120,52 +123,67 @@ class serverMultiClient(server.UDPServer):
 
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
 
-    def try_publishing(self, re_request):
-        print(re_request.getHeader())
-        client_address = (re_request.host, re_request.udp_socket)
+    def try_publishing(self, up_request):
+        print(up_request.getHeader())
+        client_address = (up_request.host, up_request.udp_socket)
 
         # Check if the client is already registered,add the file to list of files
         # if not add deny the request
-        if self.check_if_client(re_request):
-            self.list_of_available_files.append(re_request)
-            array_to_append = [re_request.name, re_request.rid, client_address, self.list_of_available_files()]
-            self.list_of_acknowledgements.append(array_to_append)
-            msg_to_client = '[Publish-Accepted' + ' | ' + str(re_request.rid) + ' | ' + 'Client exist]'
-            self.printwt(msg_to_client)
-
-            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
-            return
+        if self.check_if_client(up_request):
+            #  check if the file already published
+            if up_request not in self.list_of_client_files:
+                self.list_of_client_files.append(up_request)
+                msg_to_client = '[Publish-Accepted' + ' | ' + str(up_request.rid) + ' | ' + 'Client exist]'
+            else:
+                pass
+                # if the client is alredy published
         else:
-            msg_to_client = '[Publish-Denied' + ' | ' + str(re_request.rid) + ']'
-            self.printwt(msg_to_client)
+            msg_to_client = '[Publish-Denied' + ' | ' + str(up_request.rid) + '| ' + str(
+                up_request.name) + ' name doesn`t exist]'
 
-            array_to_append = [re_request.name, re_request.rid, msg_to_client, client_address]
-            self.list_of_acknowledgements.append(array_to_append)
+        self.printwt(msg_to_client)
+        array_to_append = [up_request.name, up_request.rid, msg_to_client, client_address]
+        self.list_of_acknowledgements.append(array_to_append)
+        self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
 
-            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
-            return
+    def try_removeFile(self, rf_request):
+        print(rf_request.getHeader())
+        client_address = (rf_request.host, rf_request.udp_socket)
 
-    def try_removeFile(self, de_request):
-        print(de_request.getHeader())
-        client_address = (de_request.host, de_request.udp_socket)
-        if self.check_if_client(de_request):
-            client_address = self.get_client_udp_address(de_request)
+        if self.check_if_client(rf_request):
             # if the file is at the list remove it
-            for obj in self.list_of_available_files():
-                if isinstance(obj, publish.publish_req):
-                    if obj.name == de_request.name:
-                        # delete the file from the database/list
-                        self.list_of_available_files.remove(obj)
-                        msg_to_client = '[File_Removed' + ' | ' + str(de_request.rid) + ']'
-                        self.printwt(msg_to_client)
+            found = False
+            for obj in self.list_of_client_files:
+                if obj.name == rf_request.name:
+                    found = True
+                    # delete the file from the database/list
+                    failed_file = []
+                    for file in rf_request.list_of_files_to_remove:
+                        try:
+                            obj.list_of_available_files.remove(file)
+                        except:
+                            failed_file.append(file)
 
-                        array_to_append = [de_request.name, de_request.rid, msg_to_client, client_address]
-                        self.list_of_acknowledgements.append(array_to_append)
+                    if len(failed_file) == 1:
+                        msg_to_client = "[REMOVED-DENIED |" + str(rf_request.rid) + " | File Doesn't exist with " + str(
+                            failed_file[0]) + "]"
+                    elif len(failed_file) > 1:
+                        msg_to_client = "[REMOVED-DENIED |" + str(
+                            rf_request.rid) + "| File Doesn't exist with following names " + str(failed_file) + "]"
+                    else:
+                        msg_to_client = '[REMOVED' + ' | ' + str(rf_request.rid) + ']'
+                    # Break the loop since we found the Obj
+                    break
 
-                        self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
-                        return
-        self.printwt('Remove_Denied, File_Doesnt exist')
-        return
+            if not found:
+                msg_to_client = "[REMOVED-DENIED |" + str(rf_request.rid) + "| You didn't publish any files ]"
+        else:
+            msg_to_client = '[REMOVED-DENIED' + ' | ' + str(rf_request.rid) + '| ' + str(rf_request.name) + ' name doesn`t exist]'
+
+        self.printwt(msg_to_client)
+        array_to_append = [rf_request.name, rf_request.rid, msg_to_client]
+        self.list_of_acknowledgements.append(array_to_append)
+        self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
 
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:

@@ -1,7 +1,9 @@
 # 0. Import the socket and datetime module
+import glob
 import socket
+import threading
+
 from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
-import Publishing
 import os
 import pickle
 from datetime import datetime
@@ -20,6 +22,7 @@ class Client:
         self.timeout = 5
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = SERVER_ADDRESS
+        self.list_of_available_files = self.get_all_file()
         #self.file_name = file_name
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
@@ -83,7 +86,7 @@ class Client:
     # TODO 4.3 publish() - publish the file names that a client has ready to be shared
     def publish(self):
         self.printwt("attempt to add a file to client's list at the server")
-        client_publishing_object = publish.publish_req(self.name, self.list_of_files)
+        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port, self.list_of_available_files)
         print(client_publishing_object.getHeader())
         publishing_object = pickle.dumps(client_publishing_object)
         self.printwt("send publishing request to server")
@@ -92,11 +95,11 @@ class Client:
     # TODO 4.4 remove() - remove the files that a client has already published
     def remove(self):
         self.printwt("attempt to remove a file to client's list at the server")
-        client_remove_object = remove.remove_req(self.name, self.list_of_files_to_remove)
+        client_remove_object = remove.remove_req(self.name, self.host, self.UDP_port, self.list_of_files_to_remove)
         print(client_remove_object.getHeader())
         remove_object = pickle.dumps(client_remove_object)
         self.printwt("send remove request to server")
-        self.sendToServer(remove_object, 'publish')
+        self.sendToServer(remove_object, 'remove')
 
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
@@ -123,6 +126,14 @@ class Client:
                 print("File Not Found")
         return result
 
+    def get_all_file(self, DATA_FOLDER="./Data"):
+        """Get all files and make a list to process each files."""
+        files = []
+        os.chdir(DATA_FOLDER)
+        for file in glob.glob("*"):
+            files.append(file)
+        os.chdir("..")
+        return files
     # TODO 4.8 download() -
 
     # 4.9 updateContact()  - client can update their client information
@@ -163,43 +174,44 @@ class Client:
     def sendToServer(self, command_object, requestType):
         flag = True
         trials = 5
-        # Create a dedicated UDP port to send data to the server. 1 port that sends, and another that receives.
-        UDP_sending_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        UDP_sending_sock.bind((self.host, 0))
+
         while flag:
             # try to send the command and receive a reply from the server
             try:
-                UDP_sending_sock.sendto(command_object, self.SERVER_ADDRESS)
+
+                if trials == 0:
+                    # if we exceeded the amount of trials we exit
+                    flag = False
+                    break
+
+                self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
+                # try to receive a reply from the server.
+                msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
+                self.printwt(f'Received {requestType} reply from server : {server_address}')
+                self.printwt(msg_from_server.decode())
+                # if we received a reply, set the flag to false, so we don't try again
+                flag = False
+
                 # once we sent the request, remove from the amount of trials if reply not received.
                 trials -= 1
                 if trials == 0:
                     # if we exceeded the amount of trials we exit
                     flag = False
                     self.printwt('Attempted to send ' + requestType + ' request to server and failed 5 times')
-                    UDP_sending_sock.close()  # close our sending socket once we exceed the amount of trials
                     break
             except socket.error:
                 # if sending failed
                 self.printwt('Failed to send ' + requestType + ' request to server')
-                UDP_sending_sock.close()  # close our sending socket if we fail to send.
-
-            # try to receive a reply from the server.
-            try:
-                msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
-                self.printwt(f'Received {requestType} reply from server : {server_address}')
-                self.printwt(msg_from_server.decode())
-                # if we received a reply, set the flag to false, so we don't try again
-                flag = False
-                UDP_sending_sock.close()  # close our sending socket once we receive a reply.
+                trials -= 1
             except socket.timeout:
                 self.printwt(
                     'Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
+                trials -= 1
             except socket.error:
                 self.printwt(
                     "ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host : Server might be offline")
-                UDP_sending_sock.close()  # close our sending socket when we fail
-                flag = False
+                trials -= 1
 
     def close_sockets(self):
         self.printwt('Closing sockets...')
@@ -207,14 +219,33 @@ class Client:
         self.TCP_sock.close()
         self.printwt('Sockets closed')
 
+def handle_client_cmd(client,cmd):
+    if cmd == "register":
+        client.register()
+    elif cmd == "unregister":
+        client.unregister()
+    elif cmd == "publish":
+        client.publish()
+    elif cmd == "remove":
+        client.list_of_files_to_remove = ["file4.txt"]
+        client.remove()
+    else:
+        print("Invalid Command! :(")
+
 
 def main():
     """ Create a UDP Client, send message to a UDP server and receive reply"""
-    tom = Client('Tom', socket.gethostbyname(socket.gethostname()), 4000, 5000)
+    client_name = input("Enter Client name:")
+    tom = Client(client_name, socket.gethostbyname(socket.gethostname()), 4000, 5000)
     tom.configure_client()
-    tom.register()
-    tom.unregister()
-    tom.register()
+    query = None
+    while query != "exit":
+        if query is not None:
+            t = threading.Thread(target=handle_client_cmd, args=(tom, query))
+            t.start()
+            t.join()
+        query = input(">")
+    tom.close_sockets()
 
 
 if __name__ == '__main__':

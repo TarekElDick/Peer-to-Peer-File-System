@@ -12,3 +12,5 @@ class Register(request.clientRequest):
     def getHeader(self):
         header_string = '\n['+self.request_type + ' | ' + str(self.rid) + ' | ' + self.name + ' | ' + str(self.host) + ' | ' + str(self.udp_socket) + ' | ' + str(self.tcp_socket) + ']\n'
         return header_string
+
+
