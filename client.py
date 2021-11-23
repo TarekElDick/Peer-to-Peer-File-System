@@ -1,6 +1,6 @@
 # 0. Import the socket and datetime module
 import socket
-from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish
+from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
 import Publishing
 import pickle
 from datetime import datetime
@@ -88,6 +88,13 @@ class Client:
         self.sendToServer(publishing_object, 'publish')
 
     # TODO 4.4 remove() - remove the files that a client has already published
+    def remove(self):
+        self.printwt("attempt to remove a file to client's list at the server")
+        client_remove_object = remove.remove_req(self.name, self.file_name)
+        print(client_remove_object.getHeader())
+        remove_object = pickle.dumps(client_remove_object)
+        self.printwt("send remove request to server")
+        self.sendToServer(remove_object, 'publish')
 
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
@@ -195,7 +202,6 @@ def main():
     tom.register()
     tom.unregister()
     tom.register()
-
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@ import glob
 import os
 import pickle
 
-from Client_Requests_Classes import publish
+from Client_Requests_Classes import publish,remove
 
 
 class Publishing:
@@ -38,6 +38,14 @@ class Publishing:
         self.printwt("send publishing request to server")
         self.sendToServer(publishing_object, 'publish')
 
+# remove request from the client side
+    def remove(self):
+        self.printwt("attempt to remove a file to client's list at the server")
+        client_remove_object = remove.remove_req(self.name, self.file_name)
+        print(client_remove_object.getHeader())
+        remove_object = pickle.dumps(client_remove_object)
+        self.printwt("send remove request to server")
+        self.sendToServer(remove_object, 'publish')
 
 
 
