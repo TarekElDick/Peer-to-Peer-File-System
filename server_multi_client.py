@@ -5,7 +5,7 @@ import threading
 from collections import defaultdict
 
 import server
-from Client_Requests_Classes import register, unregister, update_contact, retrieve
+from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
 
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
@@ -35,6 +35,8 @@ class serverMultiClient(server.UDPServer):
                 self.try_unregistering(client_request)
         elif isinstance(client_request, update_contact.UpdateContact):
             self.try_updatingContact(client_request)
+        elif isinstance(client_request, publish.publish_req):
+            self.try_publishing(client_request)
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
@@ -113,6 +115,32 @@ class serverMultiClient(server.UDPServer):
             self.list_of_acknowledgements.append(array_to_append)
 
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+    def try_publishing(self, re_request):
+        print(re_request.getHeader())
+        client_address = (re_request.host, re_request.udp_socket)
+
+        # Check if the client is already registered,add the file to list of files
+        # if not add deny the request
+        if self.check_if_client(re_request):
+            self.list_of_available_files.append(re_request)
+            array_to_append = [re_request.name, re_request.rid, client_address, self.list_of_available_files()]
+            self.list_of_acknowledgements.append(array_to_append)
+            msg_to_client = '[Publish-Accepted' + ' | ' + str(re_request.rid) + ' | ' + 'Client exist]'
+            self.printwt(msg_to_client)
+
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+        else:
+            msg_to_client = '[Publish-Denied' + ' | ' + str(re_request.rid) + ']'
+            self.printwt(msg_to_client)
+
+            array_to_append = [re_request.name, re_request.rid, msg_to_client, client_address]
+            self.list_of_acknowledgements.append(array_to_append)
+
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+
 
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:
