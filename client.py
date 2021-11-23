@@ -83,7 +83,7 @@ class Client:
     # TODO 4.3 publish() - publish the file names that a client has ready to be shared
     def publish(self):
         self.printwt("attempt to add a file to client's list at the server")
-        client_publishing_object = publish.publish_req(self.name, self.file_name)
+        client_publishing_object = publish.publish_req(self.name, self.list_of_files)
         print(client_publishing_object.getHeader())
         publishing_object = pickle.dumps(client_publishing_object)
         self.printwt("send publishing request to server")
@@ -92,7 +92,7 @@ class Client:
     # TODO 4.4 remove() - remove the files that a client has already published
     def remove(self):
         self.printwt("attempt to remove a file to client's list at the server")
-        client_remove_object = remove.remove_req(self.name, self.file_name)
+        client_remove_object = remove.remove_req(self.name, self.list_of_files_to_remove)
         print(client_remove_object.getHeader())
         remove_object = pickle.dumps(client_remove_object)
         self.printwt("send remove request to server")
@@ -115,10 +115,12 @@ class Client:
     # TODO 4.7 searchFile() - check with Aida if that's what is required
     def get_file(file_name, search_path):
         result = []
-        # Wlaking top-down from the root
+        # Walking top-down from the root
         for root, dir, files in os.walk(search_path):
             if file_name in files:
                 result.append(os.path.join(root, file_name))
+            else:
+                print("File Not Found")
         return result
 
     # TODO 4.8 download() -

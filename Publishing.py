@@ -21,7 +21,7 @@ class Publishing:
 # search for a file in a list
     def get_file(file_name, search_path):
         result = []
-        # Wlaking top-down from the root
+        # Walking top-down from the root
         for root, dir, files in os.walk(search_path):
             if file_name in files:
                 result.append(os.path.join(root, file_name))
