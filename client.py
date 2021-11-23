@@ -79,6 +79,14 @@ class Client:
         self.sendToServer(unregister_object, 'unregister')
 
     # TODO 4.3 publish() - publish the file names that a client has ready to be shared
+    def publish(self):
+        self.printwt("attempt to add a file to client's list at the server")
+        client_publishing_object = publish.publish_req(self.name, self.file_name)
+        print(client_publishing_object.getHeader())
+        publishing_object = pickle.dumps(client_publishing_object)
+        self.printwt("send publishing request to server")
+        self.sendToServer(publishing_object, 'publish')
+
     # TODO 4.4 remove() - remove the files that a client has already published
 
     # 4.5 retrieveAll() - retrieve all the information from the server
