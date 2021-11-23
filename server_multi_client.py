@@ -18,6 +18,7 @@ class serverMultiClient(server.UDPServer):
         self.list_of_registered_clients = list()
         self.list_of_client_files = list()
         self.list_of_acknowledgements = list()
+        self.peers = defaultdict(set)  # Aida
 
     # 2. handle_request() - Handle client's request and send back the response after acquiring lock
     def handle_request(self, client_data, client_address):
@@ -42,6 +43,12 @@ class serverMultiClient(server.UDPServer):
         elif isinstance(client_request, remove.remove_req):
             if not self.check_if_already_ack(client_request):
                 self.try_removeFile(client_request)
+        elif isinstance(client_request, retrieve_all.RetrieveAll):
+            self.try_retrieve_all(client_request, client_address)
+        elif isinstance(client_request, retrieve_infot.RetrieveInfot):
+            self.try_retrieveInfot(client_request, client_address)
+        elif isinstance(client_request, search_file.SearchFile):
+            self.try_searchFile(client_request, client_address)
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
@@ -179,11 +186,151 @@ class serverMultiClient(server.UDPServer):
                 msg_to_client = "[REMOVED-DENIED |" + str(rf_request.rid) + "| You didn't publish any files ]"
         else:
             msg_to_client = '[REMOVED-DENIED' + ' | ' + str(rf_request.rid) + '| ' + str(rf_request.name) + ' name doesn`t exist]'
-
         self.printwt(msg_to_client)
         array_to_append = [rf_request.name, rf_request.rid, msg_to_client]
         self.list_of_acknowledgements.append(array_to_append)
         self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+
+    def try_retrieve_all(self, up_request, client_address):
+        list_of_files = " "
+        msg_to_client = "RETRIEVE-ALL  |  " +  str(up_request.rid) + "["
+        j = 0
+
+        for obj in self.list_of_registered_clients:
+            for i in range(len(self.textfl)):
+                i = j
+                if i == len(self.textfl):
+                 break
+
+
+                clientname = self.textfl[i]
+                ipaddr = self.textfl[i+1]
+                udpport = self.textfl[i + 2]
+                #j= i + 3
+                list_of_files = " "
+                #length = len(self.textfl[i+3])
+                for files in range(len(self.textfl[i+3])):
+                    list_of_files =  (list_of_files + " , " + self.textfl[i+3][files])
+                    #   self.printwt("listfiles : " + list_of_files)
+                else:
+                    j = i + 4
+
+                    self.printwt("listfiles : " + list_of_files)
+                    self.printwt(clientname + "  " + ipaddr + " port :   " + \
+                                  udpport + "list_of_files : " + list_of_files)
+
+                    msg_to_client =( msg_to_client +  '|' + \
+                                 (clientname) + ' | ' + ipaddr + ' | ' + udpport + '|' + \
+                                   list_of_files + ']')
+                    self.printwt("end of client lists")
+
+            self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+        else:
+            msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(up_request.rid) + ' | ' + 'non-registered user]'
+            self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+
+    def try_retrieveInfot(self,up_request , client_address):
+        list_of_files = " "
+        msg_to_client = "RETRIEVE-INFOT  |  " + str(up_request.rid) + "["
+        j = 0
+        #self.printwt("3333333333333")
+
+         # if the client is registered accept the request
+        for obj in self.list_of_registered_clients:
+
+              for i in range(len(self.textfl)):
+                  i = j
+                  if i == len(self.textfl):
+                     self.printwt("client name not found in registered clients list")
+                     break
+                  #self.printwt("client name : " + str(up_request.name))
+
+                  if self.textfl[i] == up_request.name:
+                     clientname = self.textfl[i]
+                  #   self.printwt("found the requested client " + clientname)
+                     ipaddr = self.textfl[i + 1]
+                     udpport = self.textfl[i + 2]
+                     j = i + 3
+                     list_of_files = " "
+                     length = len(self.textfl[i + 3])
+
+                     for files in range(len(self.textfl[i + 3])):
+                         list_of_files = (list_of_files + " , " + self.textfl[i + 3][files])
+                     else:
+                         msg_to_client = (msg_to_client + '|' + \
+                                     (clientname) + ' | ' + ipaddr + ' | ' + udpport + '|' + \
+                                      list_of_files + ']')
+                         break
+                  else:
+                     j = i + 4
+
+
+
+              self.printwt("end of client lists")
+
+              self.printwt(msg_to_client)
+              self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+        else:
+            msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(up_request.rid) + ' | ' + 'client does not exist/is not registered]'
+            #self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+    def try_searchFile(self, up_request, client_address):
+        list_of_files = " "
+        msg_to_client = "[ SEARCH-FILE  |  " + str(up_request.rid)
+        j = 0
+        self.printwt("SEARCHSEARCH.....")
+
+        # if the client is registered accept the request
+        for obj in self.list_of_registered_clients:
+
+            for i in range(len(self.textfl)):
+                i = j
+                if i == len(self.textfl):
+                   break
+                # self.printwt("client name : " + str(up_request.name))
+                for files in range(len(self.textfl[i + 3])):
+                    if self.textfl[i+3][files] == up_request.filename:
+                        clientname = self.textfl[i]
+                        self.printwt("found the requested client " + clientname)
+                        ipaddr = self.textfl[i + 1]
+
+                        for obj1 in self.list_of_registered_clients:
+                            self.printwt(obj1.name)
+                            self.printwt(clientname)
+                           # tcpsocket = obj1.tcp_socket
+
+                            if obj1.name == clientname:
+                               self.printwt("clients11111: " + str(clientname))
+                               self.printwt("ipaddr11111: " + str(ipaddr))
+                               tcpsocket = obj1.tcp_socket
+                               self.printwt("msg_to_client11111: " + str(msg_to_client))
+                               msg_to_client = (msg_to_client + '|' + (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpsocket) + '|' + ']')
+                               self.printwt("clients22222: " + str(clientname))
+                               self.printwt(msg_to_client)
+                else:
+                    self.printwt("ffffff")
+                    j = i + 4
+
+
+            self.printwt("end of client lists")
+
+            self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+        else:
+            msg_to_client = '[SEARCH-ERROR' + ' | ' + str(
+                up_request.rid) + ' | ' + 'file does not exist]'
+            # self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+
 
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:
