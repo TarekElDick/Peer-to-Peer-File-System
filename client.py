@@ -1,6 +1,8 @@
 # 0. Import the socket and datetime module
 import socket
-from Client_Requests_Classes import register, unregister, update_contact, retrieve
+from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
+import Publishing
+import os
 import pickle
 from datetime import datetime
 from config import BUFFER_SIZE, SERVER_ADDRESS
@@ -18,6 +20,7 @@ class Client:
         self.timeout = 5
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = SERVER_ADDRESS
+        #self.file_name = file_name
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -78,7 +81,22 @@ class Client:
         self.sendToServer(unregister_object, 'unregister')
 
     # TODO 4.3 publish() - publish the file names that a client has ready to be shared
+    def publish(self):
+        self.printwt("attempt to add a file to client's list at the server")
+        client_publishing_object = publish.publish_req(self.name, self.file_name)
+        print(client_publishing_object.getHeader())
+        publishing_object = pickle.dumps(client_publishing_object)
+        self.printwt("send publishing request to server")
+        self.sendToServer(publishing_object, 'publish')
+
     # TODO 4.4 remove() - remove the files that a client has already published
+    def remove(self):
+        self.printwt("attempt to remove a file to client's list at the server")
+        client_remove_object = remove.remove_req(self.name, self.file_name)
+        print(client_remove_object.getHeader())
+        remove_object = pickle.dumps(client_remove_object)
+        self.printwt("send remove request to server")
+        self.sendToServer(remove_object, 'publish')
 
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
@@ -93,7 +111,16 @@ class Client:
         self.sendToServer(retrieve_object, 'retrieve-all')
 
     # TODO 4.6 retrieveInfoT() - retrieve info about a specific peer
-    # TODO 4.7 searchFile() -
+
+    # TODO 4.7 searchFile() - check with Aida if that's what is required
+    def get_file(file_name, search_path):
+        result = []
+        # Wlaking top-down from the root
+        for root, dir, files in os.walk(search_path):
+            if file_name in files:
+                result.append(os.path.join(root, file_name))
+        return result
+
     # TODO 4.8 download() -
 
     # 4.9 updateContact()  - client can update their client information
@@ -186,7 +213,6 @@ def main():
     tom.register()
     tom.unregister()
     tom.register()
-
 
 
 if __name__ == '__main__':
