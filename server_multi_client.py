@@ -5,7 +5,7 @@ import threading
 from collections import defaultdict
 
 import server
-from Client_Requests_Classes import register, unregister, update_contact, retrieve
+from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
 
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
@@ -35,12 +35,17 @@ class serverMultiClient(server.UDPServer):
                 self.try_unregistering(client_request)
         elif isinstance(client_request, update_contact.UpdateContact):
             self.try_updatingContact(client_request)
+        elif isinstance(client_request, publish.publish_req):
+            self.try_publishing(client_request)
+        elif isinstance(client_request, remove.remove_req):
+            self.try_removeFile(client_request)
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
         client_address = (re_request.host, re_request.udp_socket)
 
-        # Check if the client is already registered, if not add the client name to the list of clients, if already registered then deny the request
+        # Check if the client is already registered, if not add the client name to the list of clients, if already
+        # registered then deny the request
         if self.check_if_client(re_request):
             msg_to_client = '[REGISTER-DENIED' + ' | ' + str(re_request.rid) + ' | ' + 'Client already registered]'
             self.printwt(msg_to_client)
@@ -89,7 +94,8 @@ class serverMultiClient(server.UDPServer):
             # if the client is registered then we can update the register object
             for obj in self.list_of_registered_clients:
                 if isinstance(obj,
-                              register.Register):  # for checking if client they are all register objects but isinstance is important to allow us to call obj.name
+                              register.Register):  # for checking if client they are all register objects but
+                    # isinstance is important to allow us to call obj.name
                     if obj.name == up_request.name:
                         obj.host = up_request.host
                         obj.udp_socket = up_request.udp_socket
@@ -114,10 +120,58 @@ class serverMultiClient(server.UDPServer):
 
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
 
+    def try_publishing(self, re_request):
+        print(re_request.getHeader())
+        client_address = (re_request.host, re_request.udp_socket)
+
+        # Check if the client is already registered,add the file to list of files
+        # if not add deny the request
+        if self.check_if_client(re_request):
+            self.list_of_available_files.append(re_request)
+            array_to_append = [re_request.name, re_request.rid, client_address, self.list_of_available_files()]
+            self.list_of_acknowledgements.append(array_to_append)
+            msg_to_client = '[Publish-Accepted' + ' | ' + str(re_request.rid) + ' | ' + 'Client exist]'
+            self.printwt(msg_to_client)
+
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+        else:
+            msg_to_client = '[Publish-Denied' + ' | ' + str(re_request.rid) + ']'
+            self.printwt(msg_to_client)
+
+            array_to_append = [re_request.name, re_request.rid, msg_to_client, client_address]
+            self.list_of_acknowledgements.append(array_to_append)
+
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+
+    def try_removeFile(self, de_request):
+        print(de_request.getHeader())
+        client_address = (de_request.host, de_request.udp_socket)
+        if self.check_if_client(de_request):
+            client_address = self.get_client_udp_address(de_request)
+            # if the file is at the list remove it
+            for obj in self.list_of_available_files():
+                if isinstance(obj, publish.publish_req):
+                    if obj.name == de_request.name:
+                        # delete the file from the database/list
+                        self.list_of_available_files.remove(obj)
+                        msg_to_client = '[File_Removed' + ' | ' + str(de_request.rid) + ']'
+                        self.printwt(msg_to_client)
+
+                        array_to_append = [de_request.name, de_request.rid, msg_to_client, client_address]
+                        self.list_of_acknowledgements.append(array_to_append)
+
+                        self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+                        return
+        self.printwt('Remove_Denied, File_Doesnt exist')
+        return
+
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
-                          register.Register):  # for checking if client they are all register objects but isinstance is important to allow us to call obj.name
+                          register.Register):  # for checking if client they are all register objects but isinstance
+                # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return True
         return False
@@ -134,7 +188,8 @@ class serverMultiClient(server.UDPServer):
     def get_client_udp_address(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
-                          register.Register):  # for checking if client they are all register objects but isinstance is important to allow us to call obj.name
+                          register.Register):  # for checking if client they are all register objects but isinstance
+                # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return obj.host, obj.udp_socket
 

@@ -2,13 +2,15 @@ from Client_Requests_Classes import request
 
 
 class publish_req(request.clientRequest):
-    def __init__(self,  name,file_name  ) -> object:
+    def __init__(self, name,host,udp_socket, list_of_files=[]) -> object:
         super().__init__('publish_req')
         self.name = name
-        self.file_name = file_name
+        self.host = host
+        self.udp_socket = udp_socket
+        self.list_of_files = list_of_files
+        # self.file_name = file_name
 
     def getHeader(self):
-        header_string = '\n['+self.request_type + ' | ' + str(self.rid) + ' | ' + self.name + ' | ' + str(self.file_name) + ']\n'
+        header_string = '\n[' + self.request_type + ' | ' + str(self.rid) + ' | ' + self.name + ' | ' + str(
+            self.list_of_files) + ']\n'
         return header_string
-
-
