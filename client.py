@@ -1,5 +1,8 @@
 # 0. Import the socket and datetime module
+import glob
 import socket
+import threading
+
 from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
 import os
 import pickle
@@ -20,8 +23,8 @@ class Client:
         self.timeout = 5
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = SERVER_ADDRESS
-        # self.file_name = file_name
-
+        self.list_of_available_files = self.get_all_file()
+        #self.file_name = file_name
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
     @staticmethod
@@ -83,7 +86,7 @@ class Client:
     # TODO 4.3 publish() - publish the file names that a client has ready to be shared
     def publish(self):
         self.printwt("attempt to add a file to client's list at the server")
-        client_publishing_object = publish.publish_req(self.name, self.list_of_files)
+        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port, self.list_of_available_files)
         print(client_publishing_object.getHeader())
         publishing_object = pickle.dumps(client_publishing_object)
         self.printwt("send publishing request to server")
@@ -92,11 +95,11 @@ class Client:
     # TODO 4.4 remove() - remove the files that a client has already published
     def remove(self):
         self.printwt("attempt to remove a file to client's list at the server")
-        client_remove_object = remove.remove_req(self.name, self.list_of_files_to_remove)
+        client_remove_object = remove.remove_req(self.name, self.host, self.UDP_port, self.list_of_files_to_remove)
         print(client_remove_object.getHeader())
         remove_object = pickle.dumps(client_remove_object)
         self.printwt("send remove request to server")
-        self.sendToServer(remove_object, 'publish')
+        self.sendToServer(remove_object, 'remove')
 
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
@@ -123,6 +126,14 @@ class Client:
                 print("File Not Found")
         return result
 
+    def get_all_file(self, DATA_FOLDER="./Data"):
+        """Get all files and make a list to process each files."""
+        files = []
+        os.chdir(DATA_FOLDER)
+        for file in glob.glob("*"):
+            files.append(file)
+        os.chdir("..")
+        return files
     # TODO 4.8 download() -
 
     # 4.9 updateContact()  - client can update their client information
@@ -169,6 +180,13 @@ class Client:
             try:
                 self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
+                # try to receive a reply from the server.
+                msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
+                self.printwt(f'Received {requestType} reply from server : {server_address}')
+                self.printwt(msg_from_server.decode())
+                # if we received a reply, set the flag to false, so we don't try again
+                flag = False
+
                 # once we sent the request, remove from the amount of trials if reply not received.
                 trials -= 1
                 if trials == 0:
@@ -209,7 +227,6 @@ class Client:
         elif query == 'updateContact':
             newip = input('enter new ip address: ')
             pass
-
 
 def main():
     # TODO Implement dynamic threaded user commands.
