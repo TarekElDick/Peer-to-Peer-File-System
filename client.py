@@ -8,11 +8,12 @@ import os
 import pickle
 from datetime import datetime
 from config import BUFFER_SIZE, SERVER_ADDRESS
-
+import threading
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
 class Client:
     def __init__(self, name, host, UDP_port, TCP_port):
+        self.list_of_files = None
         self.name = name  # Host name
         self.host = host  # Host Address
         self.UDP_port = UDP_port  # Host UDP port client always listening to
@@ -24,7 +25,6 @@ class Client:
         self.SERVER_ADDRESS = SERVER_ADDRESS
         self.list_of_available_files = self.get_all_file()
         #self.file_name = file_name
-
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
     @staticmethod
@@ -174,16 +174,10 @@ class Client:
     def sendToServer(self, command_object, requestType):
         flag = True
         trials = 5
-
+        # Create a dedicated UDP port to send data to the server. 1 port that sends, and another that receives.
         while flag:
             # try to send the command and receive a reply from the server
             try:
-
-                if trials == 0:
-                    # if we exceeded the amount of trials we exit
-                    flag = False
-                    break
-
                 self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
                 # try to receive a reply from the server.
@@ -203,15 +197,17 @@ class Client:
             except socket.error:
                 # if sending failed
                 self.printwt('Failed to send ' + requestType + ' request to server')
-                trials -= 1
+
+            # try to receive a reply from the server.
+            try:
+                msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
+                self.printwt(f'Received {requestType} reply from server : {server_address}')
+                self.printwt(msg_from_server.decode())
+                # if we received a reply, set the flag to false, so we don't try again
+                flag = False
             except socket.timeout:
                 self.printwt(
                     'Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
-                trials -= 1
-            except socket.error:
-                self.printwt(
-                    "ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host : Server might be offline")
-                trials -= 1
 
     def close_sockets(self):
         self.printwt('Closing sockets...')
@@ -219,34 +215,38 @@ class Client:
         self.TCP_sock.close()
         self.printwt('Sockets closed')
 
-def handle_client_cmd(client,cmd):
-    if cmd == "register":
-        client.register()
-    elif cmd == "unregister":
-        client.unregister()
-    elif cmd == "publish":
-        client.publish()
-    elif cmd == "remove":
-        client.list_of_files_to_remove = ["file4.txt"]
-        client.remove()
-    else:
-        print("Invalid Command! :(")
-
+    def handle_commands(self, client, query):
+        if query == '?' or query == 'help':
+            print('<register> <unregister> <publish> <updateContact>')
+        elif query == 'register':
+            client.register()
+        elif query == 'unregister':
+            client.unregister()
+        elif query == 'publish':
+            client.publish()
+        elif query == 'updateContact':
+            newip = input('enter new ip address: ')
+            pass
 
 def main():
-    """ Create a UDP Client, send message to a UDP server and receive reply"""
-    client_name = input("Enter Client name:")
-    tom = Client(client_name, socket.gethostbyname(socket.gethostname()), 4000, 5000)
-    tom.configure_client()
-    query = None
-    while query != "exit":
-        if query is not None:
-            t = threading.Thread(target=handle_client_cmd, args=(tom, query))
-            t.start()
-            t.join()
-        query = input(">")
-    tom.close_sockets()
+    # TODO Implement dynamic threaded user commands.
 
+    query = input('> Enter Client Name: ')
+    client = Client(query, socket.gethostbyname(socket.gethostname()), 0, 0)
+    client.configure_client()
+    try:
+        print('type [help] or [?] for a list of commands at any time.')
+        print('type [exit] to exit, or terminate the program')
+        while query != 'exit':
+            query = input('> ')
+
+            client_thread = threading.Thread(target=client.handle_commands, args=(client, query))
+            client_thread.start()
+            client_thread.join()
+
+    except KeyboardInterrupt:
+        client.close_sockets()
+        
 
 if __name__ == '__main__':
     main()

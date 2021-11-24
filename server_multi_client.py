@@ -2,7 +2,7 @@
 import pickle
 import socket
 import threading
-from collections import defaultdict
+from config import SERVER_ADDRESS
 
 import server
 from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
@@ -235,7 +235,7 @@ class serverMultiClient(server.UDPServer):
 
 # 4. main() - Driver code to test the program
 def main():
-    udp_server_multi_client = serverMultiClient(socket.gethostbyname(socket.gethostname()), 3001)
+    udp_server_multi_client = serverMultiClient(SERVER_ADDRESS[0], SERVER_ADDRESS[1])
 
     udp_server_multi_client.configure_server()
     udp_server_multi_client.wait_for_client()
