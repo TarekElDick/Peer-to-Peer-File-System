@@ -2,10 +2,11 @@
 import pickle
 import socket
 import threading
-from collections import defaultdict
+from config import SERVER_ADDRESS
 
 import server
-from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
+from Client_Requests_Classes import register, unregister, update_contact, retrieve_all, \
+                                    retrieve_infot , search_file , publish, remove
 
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
@@ -18,14 +19,14 @@ class serverMultiClient(server.UDPServer):
         self.list_of_registered_clients = list()
         self.list_of_client_files = list()
         self.list_of_acknowledgements = list()
-        self.peers = defaultdict(set)  # Aida
+
 
     # 2. handle_request() - Handle client's request and send back the response after acquiring lock
     def handle_request(self, client_data, client_address):
 
         self.printwt(f'Received request from client {client_address}')
         client_request = pickle.loads(client_data)
-
+        self.printwt(client_request)
         # Find out what kind of object it is and send it to the designated function
         if isinstance(client_request, register.Register):
             if not self.check_if_already_ack(client_request):
@@ -44,11 +45,15 @@ class serverMultiClient(server.UDPServer):
             if not self.check_if_already_ack(client_request):
                 self.try_removeFile(client_request)
         elif isinstance(client_request, retrieve_all.RetrieveAll):
-            self.try_retrieve_all(client_request, client_address)
+            if not self.check_if_already_ack(client_request):
+                self.printwt("received retrieve all request 444444:")
+                self.try_retrieve_all(client_request, client_address)
         elif isinstance(client_request, retrieve_infot.RetrieveInfot):
-            self.try_retrieveInfot(client_request, client_address)
+            if not self.check_if_already_ack(client_request):
+                self.try_retrieveInfot(client_request, client_address)
         elif isinstance(client_request, search_file.SearchFile):
-            self.try_searchFile(client_request, client_address)
+            if not self.check_if_already_ack(client_request):
+                self.try_searchFile(client_request, client_address)
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
@@ -195,38 +200,46 @@ class serverMultiClient(server.UDPServer):
     def try_retrieve_all(self, up_request, client_address):
         list_of_files = " "
         msg_to_client = "RETRIEVE-ALL  |  " +  str(up_request.rid) + "["
+        registered = False
         j = 0
+        self.printwt("hhhhhhhhhhhhhhhhhh****************")
 
-        for obj in self.list_of_registered_clients:
-            for i in range(len(self.textfl)):
-                i = j
-                if i == len(self.textfl):
+        if self.check_if_client(up_request):
+
+             self.printwt("client is a registered client")
+             for i in range(len(self.list_of_client_files)):
+
+                registered = True
+               # i = j
+                if i == len(self.list_of_client_files):
                  break
 
+                clientname = self.list_of_client_files[i].name
+                for obj in self.list_of_registered_clients:
 
-                clientname = self.textfl[i]
-                ipaddr = self.textfl[i+1]
-                udpport = self.textfl[i + 2]
-                #j= i + 3
-                list_of_files = " "
-                #length = len(self.textfl[i+3])
-                for files in range(len(self.textfl[i+3])):
-                    list_of_files =  (list_of_files + " , " + self.textfl[i+3][files])
-                    #   self.printwt("listfiles : " + list_of_files)
-                else:
-                    j = i + 4
+                    if obj.name == clientname:
+                        #self.printwt("retrieveall    1111111  ")
+                        ipaddr = obj.host
+                        tcpport = obj.tcp_socket
+                        list_of_files = " "
 
-                    self.printwt("listfiles : " + list_of_files)
-                    self.printwt(clientname + "  " + ipaddr + " port :   " + \
-                                  udpport + "list_of_files : " + list_of_files)
+                        for files in range(len(self.list_of_client_files[i].list_of_available_files)):
+                          #  self.printwt(self.list_of_client_files[i].list_of_available_files[files])
+                            list_of_files =  (list_of_files + " , " + \
+                                              self.list_of_client_files[i].list_of_available_files[files])
 
-                    msg_to_client =( msg_to_client +  '|' + \
-                                 (clientname) + ' | ' + ipaddr + ' | ' + udpport + '|' + \
+                        else:
+
+                            msg_to_client =( msg_to_client +  '|' + \
+                                 (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
                                    list_of_files + ']')
-                    self.printwt("end of client lists")
 
+
+        if  registered:
+            self.printwt("end of client lists")
             self.printwt(msg_to_client)
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
 
         else:
             msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(up_request.rid) + ' | ' + 'non-registered user]'
@@ -237,93 +250,77 @@ class serverMultiClient(server.UDPServer):
     def try_retrieveInfot(self,up_request , client_address):
         list_of_files = " "
         msg_to_client = "RETRIEVE-INFOT  |  " + str(up_request.rid) + "["
+        infot = False
+
         j = 0
-        #self.printwt("3333333333333")
 
-         # if the client is registered accept the request
-        for obj in self.list_of_registered_clients:
+        if self.check_if_client(up_request):
+              for i in range(len(self.list_of_client_files)):
+                  if self.list_of_client_files[i].name == up_request.peer_name:
+                     infot = True
+                 #    i = j
+                     if i == len(self.list_of_client_files):
+                        self.printwt("client name not found in registered clients list")
+                        break
+                     clientname = self.list_of_client_files[i].name
+                     for obj1 in self.list_of_registered_clients:
+                        if obj1.name == clientname:
+                          ipaddr = obj1.host
+                          tcpport = obj1.tcp_socket
 
-              for i in range(len(self.textfl)):
-                  i = j
-                  if i == len(self.textfl):
-                     self.printwt("client name not found in registered clients list")
-                     break
-                  #self.printwt("client name : " + str(up_request.name))
-
-                  if self.textfl[i] == up_request.name:
-                     clientname = self.textfl[i]
-                  #   self.printwt("found the requested client " + clientname)
-                     ipaddr = self.textfl[i + 1]
-                     udpport = self.textfl[i + 2]
-                     j = i + 3
-                     list_of_files = " "
-                     length = len(self.textfl[i + 3])
-
-                     for files in range(len(self.textfl[i + 3])):
-                         list_of_files = (list_of_files + " , " + self.textfl[i + 3][files])
-                     else:
-                         msg_to_client = (msg_to_client + '|' + \
-                                     (clientname) + ' | ' + ipaddr + ' | ' + udpport + '|' + \
+                          list_of_files = " "
+                          for files in range(len(self.list_of_client_files[i].list_of_available_files)):
+                               list_of_files = (list_of_files + " , " + \
+                                          self.list_of_client_files[i].list_of_available_files[files])
+                          else:
+                               msg_to_client = (msg_to_client + '|' + \
+                                     (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
                                       list_of_files + ']')
-                         break
-                  else:
-                     j = i + 4
+                               break
 
 
 
-              self.printwt("end of client lists")
-
-              self.printwt(msg_to_client)
-              self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
-
+        if infot:
+           self.printwt("end of client lists")
+           self.printwt(msg_to_client)
+           self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+           return
         else:
-            msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(up_request.rid) + ' | ' + 'client does not exist/is not registered]'
-            #self.printwt(msg_to_client)
-            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
-            return
+           msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(up_request.rid) + ' | ' + 'client does not exist/is not registered]'
+           #self.printwt(msg_to_client)
+           self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+           return
     def try_searchFile(self, up_request, client_address):
         list_of_files = " "
         msg_to_client = "[ SEARCH-FILE  |  " + str(up_request.rid)
         j = 0
-        self.printwt("SEARCHSEARCH.....")
+        searchFound = False
 
         # if the client is registered accept the request
-        for obj in self.list_of_registered_clients:
+        if self.check_if_client(up_request):
 
-            for i in range(len(self.textfl)):
-                i = j
-                if i == len(self.textfl):
+            for i in range(len(self.list_of_client_files)):
+              #  i = j
+                if i == len(self.list_of_client_files):
                    break
                 # self.printwt("client name : " + str(up_request.name))
-                for files in range(len(self.textfl[i + 3])):
-                    if self.textfl[i+3][files] == up_request.filename:
-                        clientname = self.textfl[i]
-                        self.printwt("found the requested client " + clientname)
-                        ipaddr = self.textfl[i + 1]
-
+                for files in range(len(self.list_of_client_files[i].list_of_available_files)):
+                    if self.list_of_client_files[i].list_of_available_files[files] == up_request.filename:
+                        searchFound = True
+                        clientname = self.list_of_client_files[i].name
                         for obj1 in self.list_of_registered_clients:
-                            self.printwt(obj1.name)
-                            self.printwt(clientname)
-                           # tcpsocket = obj1.tcp_socket
-
                             if obj1.name == clientname:
-                               self.printwt("clients11111: " + str(clientname))
-                               self.printwt("ipaddr11111: " + str(ipaddr))
-                               tcpsocket = obj1.tcp_socket
-                               self.printwt("msg_to_client11111: " + str(msg_to_client))
-                               msg_to_client = (msg_to_client + '|' + (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpsocket) + '|' + ']')
-                               self.printwt("clients22222: " + str(clientname))
+                               ipaddr = obj1.host
+                               tcpport = obj1.tcp_socket
+                               msg_to_client = (msg_to_client + '|' + (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + ']')
                                self.printwt(msg_to_client)
-                else:
-                    self.printwt("ffffff")
-                    j = i + 4
 
 
+        if searchFound:
             self.printwt("end of client lists")
-
             self.printwt(msg_to_client)
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
-
+            return
         else:
             msg_to_client = '[SEARCH-ERROR' + ' | ' + str(
                 up_request.rid) + ' | ' + 'file does not exist]'
@@ -382,7 +379,7 @@ class serverMultiClient(server.UDPServer):
 
 # 4. main() - Driver code to test the program
 def main():
-    udp_server_multi_client = serverMultiClient(socket.gethostbyname(socket.gethostname()), 3001)
+    udp_server_multi_client = serverMultiClient(SERVER_ADDRESS[0], SERVER_ADDRESS[1])
 
     udp_server_multi_client.configure_server()
     udp_server_multi_client.wait_for_client()

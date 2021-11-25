@@ -3,17 +3,21 @@ import glob
 import socket
 import threading
 
-from Client_Requests_Classes import register, unregister, update_contact, retrieve, publish, remove
+from Client_Requests_Classes import register, unregister, update_contact, \
+    retrieve_all, retrieve_infot, search_file, publish, remove
 import os
 import pickle
 from datetime import datetime
 from config import BUFFER_SIZE, SERVER_ADDRESS
+import threading
 
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
 class Client:
     def __init__(self, name, host, UDP_port, TCP_port):
+        self.list_of_files = None
         self.name = name  # Host name
+        self.peer_name = None
         self.host = host  # Host Address
         self.UDP_port = UDP_port  # Host UDP port client always listening to
         self.TCP_port = TCP_port  # Host TCP Port client always listening to
@@ -23,7 +27,7 @@ class Client:
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = SERVER_ADDRESS
         self.list_of_available_files = self.get_all_file()
-        #self.file_name = file_name
+        # self.file_name = file_name
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -86,7 +90,8 @@ class Client:
     # TODO 4.3 publish() - publish the file names that a client has ready to be shared
     def publish(self):
         self.printwt("attempt to add a file to client's list at the server")
-        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port, self.list_of_available_files)
+        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port,
+                                                       self.list_of_available_files)
         print(client_publishing_object.getHeader())
         publishing_object = pickle.dumps(client_publishing_object)
         self.printwt("send publishing request to server")
@@ -105,7 +110,7 @@ class Client:
     def retrieveAll(self):
         self.printwt('Attempting retrieving all information from the server...')
 
-        client_retrieve_all_object = retrieve.Retrieve(self.name)
+        client_retrieve_all_object = retrieve_all.RetrieveAll(self.name, self.host, self.UDP_port)
         print(client_retrieve_all_object.getHeader())
 
         retrieve_object = pickle.dumps(client_retrieve_all_object)
@@ -114,8 +119,26 @@ class Client:
         self.sendToServer(retrieve_object, 'retrieve-all')
 
     # TODO 4.6 retrieveInfoT() - retrieve info about a specific peer
+    def retrieveInfot(self, peer_name):
+        self.printwt('retrieving all files for specific client...')
+        client_retrieve_infot = \
+            retrieve_infot.RetrieveInfot(self.name, self.host, self.UDP_port, peer_name)
+        print(client_retrieve_infot.getHeader())
+
+        retrieve_infot_object = pickle.dumps(client_retrieve_infot)
+        self.printwt('Sending retrieving specific peer files request to server...')
+        self.sendToServer(retrieve_infot_object, 'retrieve-infot')
 
     # TODO 4.7 searchFile() - check with Aida if that's what is required
+    def searchFile(self, filename):
+        self.printwt('searching specific file ...')
+        client_search_file = search_file.SearchFile(self.name, self.host, self.UDP_port, filename)
+        print(client_search_file.getHeader())
+
+        search_file_object = pickle.dumps(client_search_file)
+        self.printwt('Sending search specific file request to server...')
+        self.sendToServer(search_file_object, 'search-file')
+
     def get_file(file_name, search_path):
         result = []
         # Walking top-down from the root
@@ -134,6 +157,7 @@ class Client:
             files.append(file)
         os.chdir("..")
         return files
+
     # TODO 4.8 download() -
 
     # 4.9 updateContact()  - client can update their client information
@@ -174,16 +198,10 @@ class Client:
     def sendToServer(self, command_object, requestType):
         flag = True
         trials = 5
-
+        # Create a dedicated UDP port to send data to the server. 1 port that sends, and another that receives.
         while flag:
             # try to send the command and receive a reply from the server
             try:
-
-                if trials == 0:
-                    # if we exceeded the amount of trials we exit
-                    flag = False
-                    break
-
                 self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
                 # try to receive a reply from the server.
@@ -203,15 +221,17 @@ class Client:
             except socket.error:
                 # if sending failed
                 self.printwt('Failed to send ' + requestType + ' request to server')
-                trials -= 1
+
+            # try to receive a reply from the server.
+            try:
+                msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
+                self.printwt(f'Received {requestType} reply from server : {server_address}')
+                self.printwt(msg_from_server.decode())
+                # if we received a reply, set the flag to false, so we don't try again
+                flag = False
             except socket.timeout:
                 self.printwt(
                     'Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
-                trials -= 1
-            except socket.error:
-                self.printwt(
-                    "ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host : Server might be offline")
-                trials -= 1
 
     def close_sockets(self):
         self.printwt('Closing sockets...')
@@ -219,33 +239,46 @@ class Client:
         self.TCP_sock.close()
         self.printwt('Sockets closed')
 
-def handle_client_cmd(client,cmd):
-    if cmd == "register":
-        client.register()
-    elif cmd == "unregister":
-        client.unregister()
-    elif cmd == "publish":
-        client.publish()
-    elif cmd == "remove":
-        client.list_of_files_to_remove = ["file4.txt"]
-        client.remove()
-    else:
-        print("Invalid Command! :(")
+    def handle_commands(self, client, query):
+        if query == '?' or query == 'help':
+            print('<register> <unregister> <publish> <retrieveAll> <retrieveInfot> <searchFile> <updateContact>')
+        elif query == 'register':
+            client.register()
+        elif query == 'unregister':
+            client.unregister()
+        elif query == 'publish':
+            client.publish()
+        elif query == 'retrieveAll':
+            client.retrieveAll()
+        elif query == 'retrieveInfot':
+            peer_name = input('enter specific client name: ')
+            client.retrieveInfot(peer_name)
+        elif query == 'searchFile':
+            filename = input('enter file name to search: ')
+            client.searchFile(filename)
+        elif query == 'updateContact':
+            newip = input('enter new ip address: ')
+            pass
 
 
 def main():
-    """ Create a UDP Client, send message to a UDP server and receive reply"""
-    client_name = input("Enter Client name:")
-    tom = Client(client_name, socket.gethostbyname(socket.gethostname()), 4000, 5000)
-    tom.configure_client()
-    query = None
-    while query != "exit":
-        if query is not None:
-            t = threading.Thread(target=handle_client_cmd, args=(tom, query))
-            t.start()
-            t.join()
-        query = input(">")
-    tom.close_sockets()
+    # TODO Implement dynamic threaded user commands.
+
+    query = input('> Enter Client Name: ')
+    client = Client(query, socket.gethostbyname(socket.gethostname()), 0, 0)
+    client.configure_client()
+    try:
+        print('type [help] or [?] for a list of commands at any time.')
+        print('type [exit] to exit, or terminate the program')
+        while query != 'exit':
+            query = input('> ')
+
+            client_thread = threading.Thread(target=client.handle_commands, args=(client, query))
+            client_thread.start()
+            client_thread.join()
+
+    except KeyboardInterrupt:
+        client.close_sockets()
 
 
 if __name__ == '__main__':

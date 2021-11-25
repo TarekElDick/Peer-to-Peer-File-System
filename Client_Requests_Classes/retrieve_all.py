@@ -2,8 +2,11 @@ from Client_Requests_Classes import request
 
 
 class RetrieveAll(request.clientRequest):
-    def __init__(self) -> object:
+    def __init__(self,name, host, udp_socket) -> object:
         super().__init__('retrieve-all')
+        self.name = name
+        self.host = host
+        self.udp_socket = udp_socket
 
 
 
