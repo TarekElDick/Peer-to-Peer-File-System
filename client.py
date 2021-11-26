@@ -52,6 +52,7 @@ class Client:
         self.TCP_port = self.TCP_sock.getsockname()[1]
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
         # TODO set time out for TCP socket and implement it.
+        threading.Thread(target=self.run_tcp_server(), args=()).start()
 
     def run_tcp_server(self):
         try:
@@ -72,7 +73,7 @@ class Client:
                 data = conn.recv(1024)
                 if not data:
                     break
-                conn.sendall(data)
+                conn.sendall("Hi Thank you! I am " + self.name)
         finally:
             conn.close()
 
@@ -282,7 +283,9 @@ class Client:
         elif query == 'publish':
             client.publish()
         elif query == 'testtcp':
-            client.s
+            ip = input("Enter IP of peer:")
+            port = int(input("Enter port"))
+            client.sendToPeer(ip,port)
         elif query == 'updateContact':
             newip = input('enter new ip address: ')
             pass
