@@ -2,9 +2,14 @@
 import pickle
 import threading
 
-import Client_Requests_Classes
 import server
 from config import SERVER_ADDRESS
+
+from Client_Requests_Classes.register import Register
+from Client_Requests_Classes.unregister import Unregister
+from Client_Requests_Classes.update_contact import UpdateContact
+from Client_Requests_Classes.publish import publish_req
+from Client_Requests_Classes.remove import remove_req
 
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
@@ -25,20 +30,20 @@ class serverMultiClient(server.UDPServer):
         client_request = pickle.loads(client_data)
 
         # Find out what kind of object it is and send it to the designated function
-        if isinstance(client_request, Client_Requests_Classes.register.Register):
+        if isinstance(client_request, Register):
             if not self.check_if_already_ack(client_request):
                 self.try_registering(client_request)
             return
-        elif isinstance(client_request, Client_Requests_Classes.unregister.Unregister):
+        elif isinstance(client_request, Unregister):
             if not self.check_if_already_ack(client_request):
                 self.try_unregistering(client_request)
-        elif isinstance(client_request, Client_Requests_Classes.update_contact.UpdateContact):
+        elif isinstance(client_request, UpdateContact):
             if not self.check_if_already_ack(client_request):
                 self.try_updatingContact(client_request)
-        elif isinstance(client_request, Client_Requests_Classes.publish.publish_req):
+        elif isinstance(client_request, publish_req):
             if not self.check_if_already_ack(client_request):
                 self.try_publishing(client_request)
-        elif isinstance(client_request, Client_Requests_Classes.remove.remove_req):
+        elif isinstance(client_request, remove_req):
             if not self.check_if_already_ack(client_request):
                 self.try_removeFile(client_request)
 
@@ -75,7 +80,7 @@ class serverMultiClient(server.UDPServer):
             client_address = self.get_client_udp_address(de_request)
             # if the client is registered then unregister them
             for obj in self.list_of_registered_clients:
-                if isinstance(obj, Client_Requests_Classes.register.Register):
+                if isinstance(obj, Register):
                     if obj.name == de_request.name:
                         # delete the client from the database/list
                         self.list_of_registered_clients.remove(obj)
@@ -95,8 +100,7 @@ class serverMultiClient(server.UDPServer):
         if self.check_if_client(up_request):
             # if the client is registered then we can update the register object
             for obj in self.list_of_registered_clients:
-                if isinstance(obj,
-                              Client_Requests_Classes.register.Register):  # for checking if client they are all register objects but
+                if isinstance(obj, Register):  # for checking if client they are all register objects but
                     # isinstance is important to allow us to call obj.name
                     if obj.name == up_request.name:
                         obj.host = up_request.host
@@ -132,10 +136,10 @@ class serverMultiClient(server.UDPServer):
             #  check if the file already published
             if up_request not in self.list_of_client_files:
                 self.list_of_client_files.append(up_request)
-                msg_to_client = '[Publish-Accepted' + ' | ' + str(up_request.rid) + ' | ' + 'Client exist]'
+                msg_to_client = '[Publish-Accepted' + ' | ' + str(up_request.rid) + ' | ' + "Published Files ->"+str(up_request.list_of_available_files)+ ']'
             else:
-                pass
-                # if the client is alredy published
+                # if the client is already published
+                msg_to_client = '[Publish-Denied' + ' | ' + str(up_request.rid) + ' | ' + 'Files already published]'
         else:
             msg_to_client = '[Publish-Denied' + ' | ' + str(up_request.rid) + '| ' + str(
                 up_request.name) + ' name doesn`t exist]'
@@ -186,8 +190,7 @@ class serverMultiClient(server.UDPServer):
 
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:
-            if isinstance(obj,
-                          Client_Requests_Classes.register.Register):  # for checking if client they are all register objects but isinstance
+            if isinstance(obj,Register):  # for checking if client they are all register objects but isinstance
                 # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return True
@@ -204,8 +207,7 @@ class serverMultiClient(server.UDPServer):
 
     def get_client_udp_address(self, client_request):
         for obj in self.list_of_registered_clients:
-            if isinstance(obj,
-                          Client_Requests_Classes.register.Register):  # for checking if client they are all register objects but isinstance
+            if isinstance(obj, Register):  # for checking if client they are all register objects but isinstance
                 # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return obj.host, obj.udp_socket

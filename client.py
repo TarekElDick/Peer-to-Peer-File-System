@@ -85,9 +85,27 @@ class Client:
 
     # TODO 4.3 publish() - publish the file names that a client has ready to be shared
     def publish(self):
+        self.printwt("Select the files which you want to publish[Add File No. Seprated by ',']:")
+        count = 1
+        for file in self.list_of_available_files:
+            self.printwt(str(count)+". "+file)
+            count += 1
+        self.printwt("0. Add all files")
+        choice = input(">>")
+        if choice.isnumeric():
+            choice = int(choice)
+            if choice != 0:
+                self.list_of_available_files = [ self.list_of_available_files[choice-1]]
+        else:
+            choice = [int(x) for x in choice.split(",")]
+            user_choices = []
+            for c in choice:
+                user_choices.append(self.list_of_available_files[c-1])
+            self.list_of_available_files = user_choices
+        self.printwt("These Files will be published: "+ str(self.list_of_available_files))
         self.printwt("attempt to add a file to client's list at the server")
         client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port, self.list_of_available_files)
-        print(client_publishing_object.getHeader())
+        self.printwt(client_publishing_object.getHeader())
         publishing_object = pickle.dumps(client_publishing_object)
         self.printwt("send publishing request to server")
         self.sendToServer(publishing_object, 'publish')

@@ -2,7 +2,7 @@ from Client_Requests_Classes import request
 
 
 class Unregister(request.clientRequest):
-    def __init__(self, name):
+    def __init__(self, name)-> object:
         super().__init__('unregister')
         self.name = name
 
