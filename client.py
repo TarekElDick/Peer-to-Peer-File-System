@@ -53,6 +53,45 @@ class Client:
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
         # TODO set time out for TCP socket and implement it.
 
+    def run_tcp_server(self):
+        try:
+            # 5 is MAX Client
+            self.TCP_sock.listen(5)
+            while True:
+                conn, addr = self.TCP_sock.accept()
+                tcp_thread = threading.Thread(target=self.handle_client, args=(conn, addr))
+                tcp_thread.start()
+                tcp_thread.join()
+        finally:
+            self.TCP_sock.close()
+
+    def handle_tcp_client(self, conn, addr):
+        print('New client from', addr)
+        try:
+            while True:
+                data = conn.recv(1024)
+                if not data:
+                    break
+                conn.sendall(data)
+        finally:
+            conn.close()
+
+    def sendToPeer(self, host, port):
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            conn.connect((host, port))
+            while True:
+                line = "Hi this " + self.name
+
+                request = line.encode("utf-8")
+                conn.sendall(request)
+                # MSG_WAITALL waits for full request or error
+                response = conn.recv(len(request), socket.MSG_WAITALL)
+                print("Replied: " + str(response.decode("utf-8")))
+        finally:
+            conn.close()
+
+
     # 4. Interactions with the server
     # 4.1. register() - registers the client with the server.
     def register(self):
@@ -242,6 +281,8 @@ class Client:
             client.unregister()
         elif query == 'publish':
             client.publish()
+        elif query == 'testtcp':
+            client.s
         elif query == 'updateContact':
             newip = input('enter new ip address: ')
             pass
