@@ -57,6 +57,46 @@ class Client:
         self.TCP_port = self.TCP_sock.getsockname()[1]
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
         # TODO set time out for TCP socket and implement it.
+        threading.Thread(target=self.run_tcp_server(), args=()).start()
+
+    def run_tcp_server(self):
+        try:
+            # 5 is MAX Client
+            self.TCP_sock.listen(5)
+            while True:
+                conn, addr = self.TCP_sock.accept()
+                tcp_thread = threading.Thread(target=self.handle_client, args=(conn, addr))
+                tcp_thread.start()
+                tcp_thread.join()
+        finally:
+            self.TCP_sock.close()
+
+    def handle_tcp_client(self, conn, addr):
+        print('New client from', addr)
+        try:
+            while True:
+                data = conn.recv(1024)
+                if not data:
+                    break
+                conn.sendall("Hi Thank you! I am " + self.name)
+        finally:
+            conn.close()
+
+    def sendToPeer(self, host, port):
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            conn.connect((host, port))
+            while True:
+                line = "Hi this " + self.name
+
+                request = line.encode("utf-8")
+                conn.sendall(request)
+                # MSG_WAITALL waits for full request or error
+                response = conn.recv(len(request), socket.MSG_WAITALL)
+                print("Replied: " + str(response.decode("utf-8")))
+        finally:
+            conn.close()
+
 
     # 4. Interactions with the server
     # 4.1. register() - registers the client with the server.
@@ -90,10 +130,30 @@ class Client:
 
     # TODO 4.3 publish() - publish the file names that a client has ready to be shared
     def publish(self):
+        self.printwt("Select the files which you want to publish[Add File No. Seprated by ',']:")
+        count = 1
+        for file in self.list_of_available_files:
+            self.printwt(str(count)+". "+file)
+            count += 1
+        self.printwt("0. Add all files")
+        choice = input(">>")
+        if choice.isnumeric():
+            choice = int(choice)
+            if choice != 0:
+                self.list_of_available_files = [ self.list_of_available_files[choice-1]]
+        else:
+            choice = [int(x) for x in choice.split(",")]
+            user_choices = []
+            for c in choice:
+                user_choices.append(self.list_of_available_files[c-1])
+            self.list_of_available_files = user_choices
+        self.printwt("These Files will be published: "+ str(self.list_of_available_files))
         self.printwt("attempt to add a file to client's list at the server")
-        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port,
-                                                       self.list_of_available_files)
-        print(client_publishing_object.getHeader())
+
+        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port, self.list_of_available_files)
+        self.printwt(client_publishing_object.getHeader())
+
+    
         publishing_object = pickle.dumps(client_publishing_object)
         self.printwt("send publishing request to server")
         self.sendToServer(publishing_object, 'publish')
@@ -253,6 +313,7 @@ class Client:
         elif query == 'publish':
             client.publish()
 
+
         elif query == 'retrieveAll':
             client.retrieveAll()
         elif query == 'retrieveInfot':
@@ -261,6 +322,7 @@ class Client:
         elif query == 'searchFile':
             filename = input('enter file name to search: ')
             client.searchFile(filename)
+
         elif query == 'updateContact':
             newip = input('enter new ip address: ')
             pass
