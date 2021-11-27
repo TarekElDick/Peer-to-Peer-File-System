@@ -27,7 +27,8 @@ class Client:
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = SERVER_ADDRESS
         self.list_of_available_files = self.get_all_file()
-        # self.file_name = file_name
+
+        #self.file_name = file_name
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -241,13 +242,17 @@ class Client:
 
     def handle_commands(self, client, query):
         if query == '?' or query == 'help':
+
+          
             print('<register> <unregister> <publish> <retrieveAll> <retrieveInfot> <searchFile> <updateContact>')
+
         elif query == 'register':
             client.register()
         elif query == 'unregister':
             client.unregister()
         elif query == 'publish':
             client.publish()
+
         elif query == 'retrieveAll':
             client.retrieveAll()
         elif query == 'retrieveInfot':
@@ -259,6 +264,7 @@ class Client:
         elif query == 'updateContact':
             newip = input('enter new ip address: ')
             pass
+
 
 
 def main():

@@ -1,12 +1,15 @@
 # 0. Import the socket,  threading, datetime, and our own server.py module
 import pickle
-import socket
 import threading
+
 from config import SERVER_ADDRESS
 
+
+import Client_Requests_Classes
 import server
 from Client_Requests_Classes import register, unregister, update_contact, retrieve_all, \
                                     retrieve_infot , search_file , publish, remove
+
 
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
@@ -20,7 +23,6 @@ class serverMultiClient(server.UDPServer):
         self.list_of_client_files = list()
         self.list_of_acknowledgements = list()
 
-
     # 2. handle_request() - Handle client's request and send back the response after acquiring lock
     def handle_request(self, client_data, client_address):
 
@@ -28,22 +30,23 @@ class serverMultiClient(server.UDPServer):
         client_request = pickle.loads(client_data)
         self.printwt(client_request)
         # Find out what kind of object it is and send it to the designated function
-        if isinstance(client_request, register.Register):
+        if isinstance(client_request, Client_Requests_Classes.register.Register):
             if not self.check_if_already_ack(client_request):
                 self.try_registering(client_request)
             return
-        elif isinstance(client_request, unregister.Unregister):
+        elif isinstance(client_request, Client_Requests_Classes.unregister.Unregister):
             if not self.check_if_already_ack(client_request):
                 self.try_unregistering(client_request)
-        elif isinstance(client_request, update_contact.UpdateContact):
+        elif isinstance(client_request, Client_Requests_Classes.update_contact.UpdateContact):
             if not self.check_if_already_ack(client_request):
                 self.try_updatingContact(client_request)
-        elif isinstance(client_request, publish.publish_req):
+        elif isinstance(client_request, Client_Requests_Classes.publish.publish_req):
             if not self.check_if_already_ack(client_request):
                 self.try_publishing(client_request)
-        elif isinstance(client_request, remove.remove_req):
+        elif isinstance(client_request, Client_Requests_Classes.remove.remove_req):
             if not self.check_if_already_ack(client_request):
                 self.try_removeFile(client_request)
+
         elif isinstance(client_request, retrieve_all.RetrieveAll):
             if not self.check_if_already_ack(client_request):
                 self.printwt("received retrieve all request 444444:")
@@ -54,6 +57,7 @@ class serverMultiClient(server.UDPServer):
         elif isinstance(client_request, search_file.SearchFile):
             if not self.check_if_already_ack(client_request):
                 self.try_searchFile(client_request, client_address)
+
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
@@ -88,7 +92,7 @@ class serverMultiClient(server.UDPServer):
             client_address = self.get_client_udp_address(de_request)
             # if the client is registered then unregister them
             for obj in self.list_of_registered_clients:
-                if isinstance(obj, register.Register):
+                if isinstance(obj, Client_Requests_Classes.register.Register):
                     if obj.name == de_request.name:
                         # delete the client from the database/list
                         self.list_of_registered_clients.remove(obj)
@@ -109,7 +113,7 @@ class serverMultiClient(server.UDPServer):
             # if the client is registered then we can update the register object
             for obj in self.list_of_registered_clients:
                 if isinstance(obj,
-                              register.Register):  # for checking if client they are all register objects but
+                              Client_Requests_Classes.register.Register):  # for checking if client they are all register objects but
                     # isinstance is important to allow us to call obj.name
                     if obj.name == up_request.name:
                         obj.host = up_request.host
@@ -190,12 +194,12 @@ class serverMultiClient(server.UDPServer):
             if not found:
                 msg_to_client = "[REMOVED-DENIED |" + str(rf_request.rid) + "| You didn't publish any files ]"
         else:
-            msg_to_client = '[REMOVED-DENIED' + ' | ' + str(rf_request.rid) + '| ' + str(rf_request.name) + ' name doesn`t exist]'
+            msg_to_client = '[REMOVED-DENIED' + ' | ' + str(rf_request.rid) + '| ' + str(
+                rf_request.name) + ' name doesn`t exist]'
         self.printwt(msg_to_client)
         array_to_append = [rf_request.name, rf_request.rid, msg_to_client]
         self.list_of_acknowledgements.append(array_to_append)
         self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
-
 
     def try_retrieve_all(self, up_request, client_address):
         list_of_files = " "
@@ -278,8 +282,6 @@ class serverMultiClient(server.UDPServer):
                                       list_of_files + ']')
                                break
 
-
-
         if infot:
            self.printwt("end of client lists")
            self.printwt(msg_to_client)
@@ -329,10 +331,11 @@ class serverMultiClient(server.UDPServer):
             return
 
 
+
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
-                          register.Register):  # for checking if client they are all register objects but isinstance
+                          Client_Requests_Classes.register.Register):  # for checking if client they are all register objects but isinstance
                 # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return True
@@ -350,7 +353,7 @@ class serverMultiClient(server.UDPServer):
     def get_client_udp_address(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
-                          register.Register):  # for checking if client they are all register objects but isinstance
+                          Client_Requests_Classes.register.Register):  # for checking if client they are all register objects but isinstance
                 # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return obj.host, obj.udp_socket

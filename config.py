@@ -1,5 +1,13 @@
 import socket
 
 # All constants
+UDP_TIMEOUT = 5
+TCP_TIMEOUT = 5
 BUFFER_SIZE = 1024
-SERVER_ADDRESS = (socket.gethostbyname(socket.gethostname()), 3001)  # IPV4 Address of computer running this code, and port that server is listening on.
+
+# UPDATE THE IPV4 ADDRESS OF THE SERVER
+# if running both server and client on same machine
+SERVER_ADDRESS = (socket.gethostbyname(socket.gethostname()), 3001)
+
+# if running on separate machines just put the server ip here
+# SERVER_ADDRESS = ('', 3001)
