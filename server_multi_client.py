@@ -2,8 +2,14 @@
 import pickle
 import threading
 
-import server
+
 from config import SERVER_ADDRESS
+import Client_Requests_Classes
+
+import server
+from Client_Requests_Classes import register, unregister, update_contact, retrieve_all, \
+                                    retrieve_infot , search_file , publish, remove
+
 
 from Client_Requests_Classes.register import Register
 from Client_Requests_Classes.unregister import Unregister
@@ -28,7 +34,7 @@ class serverMultiClient(server.UDPServer):
 
         self.printwt(f'Received request from client {client_address}')
         client_request = pickle.loads(client_data)
-
+        self.printwt(client_request)
         # Find out what kind of object it is and send it to the designated function
         if isinstance(client_request, Register):
             if not self.check_if_already_ack(client_request):
@@ -46,6 +52,18 @@ class serverMultiClient(server.UDPServer):
         elif isinstance(client_request, remove_req):
             if not self.check_if_already_ack(client_request):
                 self.try_removeFile(client_request)
+
+        elif isinstance(client_request, retrieve_all.RetrieveAll):
+            if not self.check_if_already_ack(client_request):
+                self.printwt("received retrieve all request 444444:")
+                self.try_retrieve_all(client_request, client_address)
+        elif isinstance(client_request, retrieve_infot.RetrieveInfot):
+            if not self.check_if_already_ack(client_request):
+                self.try_retrieveInfot(client_request, client_address)
+        elif isinstance(client_request, search_file.SearchFile):
+            if not self.check_if_already_ack(client_request):
+                self.try_searchFile(client_request, client_address)
+
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
@@ -187,6 +205,137 @@ class serverMultiClient(server.UDPServer):
         array_to_append = [rf_request.name, rf_request.rid, msg_to_client]
         self.list_of_acknowledgements.append(array_to_append)
         self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+
+    def try_retrieve_all(self, up_request, client_address):
+        list_of_files = " "
+        msg_to_client = "RETRIEVE-ALL  |  " +  str(up_request.rid) + "["
+        registered = False
+        j = 0
+        self.printwt("hhhhhhhhhhhhhhhhhh****************")
+
+        if self.check_if_client(up_request):
+
+             self.printwt("client is a registered client")
+             for i in range(len(self.list_of_client_files)):
+
+                registered = True
+               # i = j
+                if i == len(self.list_of_client_files):
+                 break
+
+                clientname = self.list_of_client_files[i].name
+                for obj in self.list_of_registered_clients:
+
+                    if obj.name == clientname:
+                        #self.printwt("retrieveall    1111111  ")
+                        ipaddr = obj.host
+                        tcpport = obj.tcp_socket
+                        list_of_files = " "
+
+                        for files in range(len(self.list_of_client_files[i].list_of_available_files)):
+                          #  self.printwt(self.list_of_client_files[i].list_of_available_files[files])
+                            list_of_files =  (list_of_files + " , " + \
+                                              self.list_of_client_files[i].list_of_available_files[files])
+
+                        else:
+
+                            msg_to_client =( msg_to_client +  '|' + \
+                                 (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
+                                   list_of_files + ']')
+
+
+        if  registered:
+            self.printwt("end of client lists")
+            self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+
+        else:
+            msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(up_request.rid) + ' | ' + 'non-registered user]'
+            self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+
+    def try_retrieveInfot(self,up_request , client_address):
+        list_of_files = " "
+        msg_to_client = "RETRIEVE-INFOT  |  " + str(up_request.rid) + "["
+        infot = False
+
+        j = 0
+
+        if self.check_if_client(up_request):
+              for i in range(len(self.list_of_client_files)):
+                  if self.list_of_client_files[i].name == up_request.peer_name:
+                     infot = True
+                 #    i = j
+                     if i == len(self.list_of_client_files):
+                        self.printwt("client name not found in registered clients list")
+                        break
+                     clientname = self.list_of_client_files[i].name
+                     for obj1 in self.list_of_registered_clients:
+                        if obj1.name == clientname:
+                          ipaddr = obj1.host
+                          tcpport = obj1.tcp_socket
+
+                          list_of_files = " "
+                          for files in range(len(self.list_of_client_files[i].list_of_available_files)):
+                               list_of_files = (list_of_files + " , " + \
+                                          self.list_of_client_files[i].list_of_available_files[files])
+                          else:
+                               msg_to_client = (msg_to_client + '|' + \
+                                     (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
+                                      list_of_files + ']')
+                               break
+
+        if infot:
+           self.printwt("end of client lists")
+           self.printwt(msg_to_client)
+           self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+           return
+        else:
+           msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(up_request.rid) + ' | ' + 'client does not exist/is not registered]'
+           #self.printwt(msg_to_client)
+           self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+           return
+    def try_searchFile(self, up_request, client_address):
+        list_of_files = " "
+        msg_to_client = "[ SEARCH-FILE  |  " + str(up_request.rid)
+        j = 0
+        searchFound = False
+
+        # if the client is registered accept the request
+        if self.check_if_client(up_request):
+
+            for i in range(len(self.list_of_client_files)):
+              #  i = j
+                if i == len(self.list_of_client_files):
+                   break
+                # self.printwt("client name : " + str(up_request.name))
+                for files in range(len(self.list_of_client_files[i].list_of_available_files)):
+                    if self.list_of_client_files[i].list_of_available_files[files] == up_request.filename:
+                        searchFound = True
+                        clientname = self.list_of_client_files[i].name
+                        for obj1 in self.list_of_registered_clients:
+                            if obj1.name == clientname:
+                               ipaddr = obj1.host
+                               tcpport = obj1.tcp_socket
+                               msg_to_client = (msg_to_client + '|' + (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + ']')
+                               self.printwt(msg_to_client)
+
+
+        if searchFound:
+            self.printwt("end of client lists")
+            self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+        else:
+            msg_to_client = '[SEARCH-ERROR' + ' | ' + str(
+                up_request.rid) + ' | ' + 'file does not exist]'
+            # self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
+
+
 
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:

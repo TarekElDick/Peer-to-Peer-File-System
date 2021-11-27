@@ -2,8 +2,11 @@ from Client_Requests_Classes import request
 
 
 class SearchFile(request.clientRequest):
-    def __init__(self, filename) -> object:
+    def __init__(self, name, host, udp_socket,filename) -> object:
         super().__init__('search-file')
+        self.name = name
+        self.host = host
+        self.udp_socket = udp_socket
         self.filename = filename
 
 
