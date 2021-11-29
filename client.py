@@ -259,7 +259,6 @@ class Client:
     def sendToServer(self, command_object, requestType):
         flag = True
         trials = 5
-        # Create a dedicated UDP port to send data to the server. 1 port that sends, and another that receives.
         while flag:
             # try to send the command and receive a reply from the server
             try:
@@ -324,7 +323,7 @@ def main():
 
     try:
         print('type [help] or [?] for a list of commands at any time.')
-        print('type [exit] to exit, or terminate the program')
+        print('type [exit] to exit, or terminate the client')
         while query != 'exit':
             query = input('> ')
 

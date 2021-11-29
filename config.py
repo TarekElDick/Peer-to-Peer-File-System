@@ -4,4 +4,3 @@ import socket
 UDP_TIMEOUT = 5
 TCP_TIMEOUT = 5
 BUFFER_SIZE = 1024
-

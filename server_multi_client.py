@@ -5,8 +5,7 @@ import socket
 from datetime import datetime
 from Client_Requests_Classes import publish, register, remove, retrieve_all, retrieve_infot, search_file, unregister, \
     update_contact
-from config import SERVER_ADDRESS
-
+import msvcrt
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
 # only one thread uses the sendto() method at a time
@@ -16,7 +15,6 @@ class serverMultiClient():
         self.host = host  # Host Address
         self.port = port  # Host port
         self.sock = None  # Host Socket
-        #self.socket_lock = threading.Lock()
         self.list_of_registered_clients = list()
         self.list_of_client_files = list()
         self.list_of_acknowledgements = list()
@@ -36,8 +34,6 @@ class serverMultiClient():
         self.printwt(f'Received request from client {client_address}')
         client_request = pickle.loads(client_data)
 
-        # TODO store this request in a special requests/reply log file.
-        self.printwt(client_request)
         # Find out what kind of object it is and send it to the designated function
         if isinstance(client_request, register.Register):
             if not self.check_if_already_ack(client_request):
@@ -68,7 +64,15 @@ class serverMultiClient():
     def configure_server(self):
         """Configure the server"""
 
-        #TODO implement function to retrieve saved state if not empty
+        # TODO implement function to retrieve saved state if not empty
+
+        try:
+            self.printwt('Loading database')
+            self.list_of_client_files = pickle.load(open('server_saved_data/clientFiles.p', 'rb'))
+            self.list_of_registered_clients = pickle.load(open('server_saved_data/registeredClients.p', 'rb'))
+            self.list_of_acknowledgements = pickle.load(open('server_saved_data/acknowledgements.p', 'rb'))
+        except (OSError, IOError, EOFError) as e:
+            self.printwt('No saved database, creating database')
 
         # 3.1. Create the UDP socket with IPv4 Addressing
         self.printwt('Creating server socket...')
@@ -81,6 +85,8 @@ class serverMultiClient():
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
+        # TODO implement ack log file.
+
         client_address = (re_request.host, re_request.udp_socket)
 
         # Check if the client is already registered, if not add the client name to the list of clients, if already
@@ -128,6 +134,7 @@ class serverMultiClient():
         return
 
     def try_updatingContact(self, up_request):
+        print(up_request.getHeader())
         client_address = self.get_client_udp_address(up_request)
         if self.check_if_client(up_request):
             # if the client is registered then we can update the register object
@@ -249,14 +256,14 @@ class serverMultiClient():
 
                         for files in range(len(self.list_of_client_files[i].list_of_available_files)):
                             #  self.printwt(self.list_of_client_files[i].list_of_available_files[files])
-                            list_of_files = (list_of_files + " , " + \
-                                             self.list_of_client_files[i].list_of_available_files[files])
+                            list_of_files = (
+                                    list_of_files + " , " + self.list_of_client_files[i].list_of_available_files[
+                                files])
 
                         else:
 
-                            msg_to_client = (msg_to_client + '|' + \
-                                             (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
-                                             list_of_files + ']')
+                            msg_to_client = (msg_to_client + '|' + clientname + ' | ' + str(ipaddr) + ' | ' + str(
+                                tcpport) + '|' + list_of_files + ']')
 
         if registered:
             self.printwt("end of client lists")
@@ -293,12 +300,11 @@ class serverMultiClient():
 
                             list_of_files = " "
                             for files in range(len(self.list_of_client_files[i].list_of_available_files)):
-                                list_of_files = (list_of_files + " , " + \
+                                list_of_files = (list_of_files + " , " +
                                                  self.list_of_client_files[i].list_of_available_files[files])
                             else:
-                                msg_to_client = (msg_to_client + '|' + \
-                                                 (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
-                                                 list_of_files + ']')
+                                msg_to_client = (msg_to_client + '|' + clientname + ' | ' + str(ipaddr) + ' | ' + str(
+                                    tcpport) + '|' + list_of_files + ']')
                                 break
 
         if infot:
@@ -381,37 +387,34 @@ class serverMultiClient():
     def shutdown_server(self):
         """ Shutdown the UDP server """
         # TODO save the states
+        pickle.dump(self.list_of_client_files, open("server_saved_data/clientFiles.p", "wb"))
+        pickle.dump(self.list_of_registered_clients, open("server_saved_data/registeredClients.p", "wb"))
+        pickle.dump(self.list_of_acknowledgements, open("server_saved_data/acknowledgements.p", "wb"))
 
         self.printwt('Shutting down server...')
         self.sock.close()
+        return 1
 
-    # 3. wait_for_client() - Override the server's wait_for_client() method to handle multiple clients by using an
+    # 3. wait_for_client() -Method to handle multiple clients by using an
     # infinite loop
     def wait_for_client(self):
+        while True:
+            try:
+                data, client_address = self.sock.recvfrom(1024)
+                c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
 
-        try:
-            while True:  # Keep Alive
+                c_thread.daemon = True
+                c_thread.start()
 
-                try:
-                    data, client_address = self.sock.recvfrom(1024)
-
-                    c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
-
-                    c_thread.daemon = True
-                    c_thread.start()
-
-                except OSError as err:
-                    self.printwt(err)
-
-        except KeyboardInterrupt:
-            self.shutdown_server()
+            except KeyboardInterrupt:
+                self.shutdown_server()
 
 
 # 4. main() - Driver code to test the program
 def main():
-    query = input('> Enter Server IPv4 Address')
+    query = input('> Enter Server IPv4 Address: ')
     serverAddress = (query, 3001)
-    udp_server_multi_client = serverMultiClient(serverAddress)
+    udp_server_multi_client = serverMultiClient(serverAddress[0], serverAddress[1])
     udp_server_multi_client.configure_server()
     udp_server_multi_client.wait_for_client()
 
