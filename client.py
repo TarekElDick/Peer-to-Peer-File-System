@@ -8,13 +8,13 @@ from Client_Requests_Classes import register, unregister, update_contact, \
 import os
 import pickle
 from datetime import datetime
-from config import BUFFER_SIZE, SERVER_ADDRESS
+from config import BUFFER_SIZE, UDP_TIMEOUT
 import threading
 
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
 class Client:
-    def __init__(self, name, host, UDP_port, TCP_port):
+    def __init__(self, name, host, UDP_port, TCP_port, server_address):
         self.list_of_files = None
         self.name = name  # Host name
         self.peer_name = None
@@ -23,12 +23,12 @@ class Client:
         self.TCP_port = TCP_port  # Host TCP Port client always listening to
         self.UDP_sock = None  # Host UDP Socket
         self.TCP_sock = None  # Host TCP Socket
-        self.timeout = 5
+        self.timeout = UDP_TIMEOUT
         self.BUFFER_SIZE = BUFFER_SIZE
-        self.SERVER_ADDRESS = SERVER_ADDRESS
+        self.SERVER_ADDRESS = server_address
         self.list_of_available_files = self.get_all_file()
 
-        #self.file_name = file_name
+        # self.file_name = file_name
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -57,7 +57,8 @@ class Client:
         self.TCP_port = self.TCP_sock.getsockname()[1]
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
         # TODO set time out for TCP socket and implement it.
-        threading.Thread(target=self.run_tcp_server(), args=()).start()
+        # TODO uncomment below and delete this comment
+        #threading.Thread(target=self.run_tcp_server(), args=()).start()
 
     def run_tcp_server(self):
         try:
@@ -97,7 +98,6 @@ class Client:
         finally:
             conn.close()
 
-
     # 4. Interactions with the server
     # 4.1. register() - registers the client with the server.
     def register(self):
@@ -133,27 +133,27 @@ class Client:
         self.printwt("Select the files which you want to publish[Add File No. Seprated by ',']:")
         count = 1
         for file in self.list_of_available_files:
-            self.printwt(str(count)+". "+file)
+            self.printwt(str(count) + ". " + file)
             count += 1
         self.printwt("0. Add all files")
         choice = input(">>")
         if choice.isnumeric():
             choice = int(choice)
             if choice != 0:
-                self.list_of_available_files = [ self.list_of_available_files[choice-1]]
+                self.list_of_available_files = [self.list_of_available_files[choice - 1]]
         else:
             choice = [int(x) for x in choice.split(",")]
             user_choices = []
             for c in choice:
-                user_choices.append(self.list_of_available_files[c-1])
+                user_choices.append(self.list_of_available_files[c - 1])
             self.list_of_available_files = user_choices
-        self.printwt("These Files will be published: "+ str(self.list_of_available_files))
+        self.printwt("These Files will be published: " + str(self.list_of_available_files))
         self.printwt("attempt to add a file to client's list at the server")
 
-        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port, self.list_of_available_files)
+        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port,
+                                                       self.list_of_available_files)
         self.printwt(client_publishing_object.getHeader())
 
-    
         publishing_object = pickle.dumps(client_publishing_object)
         self.printwt("send publishing request to server")
         self.sendToServer(publishing_object, 'publish')
@@ -259,19 +259,11 @@ class Client:
     def sendToServer(self, command_object, requestType):
         flag = True
         trials = 5
-        # Create a dedicated UDP port to send data to the server. 1 port that sends, and another that receives.
         while flag:
             # try to send the command and receive a reply from the server
             try:
                 self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
-                # try to receive a reply from the server.
-                msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
-                self.printwt(f'Received {requestType} reply from server : {server_address}')
-                self.printwt(msg_from_server.decode())
-                # if we received a reply, set the flag to false, so we don't try again
-                flag = False
-
                 # once we sent the request, remove from the amount of trials if reply not received.
                 trials -= 1
                 if trials == 0:
@@ -282,7 +274,6 @@ class Client:
             except socket.error:
                 # if sending failed
                 self.printwt('Failed to send ' + requestType + ' request to server')
-
             # try to receive a reply from the server.
             try:
                 msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
@@ -300,20 +291,16 @@ class Client:
         self.TCP_sock.close()
         self.printwt('Sockets closed')
 
-    def handle_commands(self, client, query):
+    @staticmethod
+    def handle_commands(client, query):
         if query == '?' or query == 'help':
-
-          
             print('<register> <unregister> <publish> <retrieveAll> <retrieveInfot> <searchFile> <updateContact>')
-
         elif query == 'register':
             client.register()
         elif query == 'unregister':
             client.unregister()
         elif query == 'publish':
             client.publish()
-
-
         elif query == 'retrieveAll':
             client.retrieveAll()
         elif query == 'retrieveInfot':
@@ -322,28 +309,27 @@ class Client:
         elif query == 'searchFile':
             filename = input('enter file name to search: ')
             client.searchFile(filename)
-
         elif query == 'updateContact':
             newip = input('enter new ip address: ')
             pass
 
 
-
 def main():
-    # TODO Implement dynamic threaded user commands.
-
+    query = input('> Enter Server IPv4 Address: ')
+    serverAddress = (query, 3001)
     query = input('> Enter Client Name: ')
-    client = Client(query, socket.gethostbyname(socket.gethostname()), 0, 0)
+    client = Client(query, socket.gethostbyname(socket.gethostname()), 4000, 5000, serverAddress)
     client.configure_client()
+
     try:
         print('type [help] or [?] for a list of commands at any time.')
-        print('type [exit] to exit, or terminate the program')
+        print('type [exit] to exit, or terminate the client')
         while query != 'exit':
-            query = input('> ')
+            query = input('')
 
             client_thread = threading.Thread(target=client.handle_commands, args=(client, query))
+            client_thread.daemon = True
             client_thread.start()
-            client_thread.join()
 
     except KeyboardInterrupt:
         client.close_sockets()
