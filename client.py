@@ -1,23 +1,19 @@
 # 0. Import the socket and datetime module
 import glob
 import socket
-import threading
-
-from Client_Requests_Classes import register, unregister, update_contact, \
-    retrieve_all, retrieve_infot, search_file, publish, remove
 import os
 import pickle
 from datetime import datetime
 from config import BUFFER_SIZE, UDP_TIMEOUT
 import threading
+from Client_Requests_Classes import register, unregister, update_contact, \
+    retrieve_all, retrieve_infot, search_file, publish, remove
 
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
 class Client:
     def __init__(self, name, host, UDP_port, TCP_port, server_address):
-        self.list_of_files = None
-        self.name = name  # Host name
-        self.peer_name = None
+        self.name = name  # Client name
         self.host = host  # Host Address
         self.UDP_port = UDP_port  # Host UDP port client always listening to
         self.TCP_port = TCP_port  # Host TCP Port client always listening to
@@ -27,8 +23,6 @@ class Client:
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = server_address
         self.list_of_available_files = self.get_all_file()
-
-        # self.file_name = file_name
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -56,24 +50,24 @@ class Client:
         self.TCP_sock.bind((self.host, self.TCP_port))
         self.TCP_port = self.TCP_sock.getsockname()[1]
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
-        # TODO set time out for TCP socket and implement it.
-        # TODO uncomment below and delete this comment
-        #threading.Thread(target=self.run_tcp_server(), args=()).start()
+
+        # TODO figure out if below is necessary
+        # threading.Thread(target=self.run_tcp_server(), args=()).start()
 
     def run_tcp_server(self):
         try:
             # 5 is MAX Client
             self.TCP_sock.listen(5)
             while True:
-                conn, addr = self.TCP_sock.accept()
-                tcp_thread = threading.Thread(target=self.handle_client, args=(conn, addr))
+                conn, address = self.TCP_sock.accept()
+                tcp_thread = threading.Thread(target=self.handle_tcp_client, args=(conn, address))
                 tcp_thread.start()
                 tcp_thread.join()
         finally:
             self.TCP_sock.close()
 
-    def handle_tcp_client(self, conn, addr):
-        print('New client from', addr)
+    def handle_tcp_client(self, conn, address):
+        print('New client from', address)
         try:
             while True:
                 data = conn.recv(1024)
@@ -128,7 +122,7 @@ class Client:
         self.printwt('Sending de-registration data to the server...')
         self.sendToServer(unregister_object, 'unregister')
 
-    # TODO 4.3 publish() - publish the file names that a client has ready to be shared
+    # 4.3 publish() - publish the file names that a client has ready to be shared
     def publish(self):
         self.printwt("Select the files which you want to publish[Add File No. Seprated by ',']:")
         count = 1
@@ -158,7 +152,7 @@ class Client:
         self.printwt("send publishing request to server")
         self.sendToServer(publishing_object, 'publish')
 
-    # TODO 4.4 remove() - remove the files that a client has already published
+    # 4.4 remove() - remove the files that a client has already published
     def remove(self):
         self.printwt("attempt to remove a file to client's list at the server")
         client_remove_object = remove.remove_req(self.name, self.host, self.UDP_port, self.list_of_files_to_remove)
@@ -179,7 +173,7 @@ class Client:
         self.printwt('Sending retrieving all request to server...')
         self.sendToServer(retrieve_object, 'retrieve-all')
 
-    # TODO 4.6 retrieveInfoT() - retrieve info about a specific peer
+    # 4.6 retrieveInfoT() - retrieve info about a specific peer
     def retrieveInfot(self, peer_name):
         self.printwt('retrieving all files for specific client...')
         client_retrieve_infot = \
@@ -190,7 +184,7 @@ class Client:
         self.printwt('Sending retrieving specific peer files request to server...')
         self.sendToServer(retrieve_infot_object, 'retrieve-infot')
 
-    # TODO 4.7 searchFile() - check with Aida if that's what is required
+    # 4.7 searchFile() - check with Aida if that's what is required
     def searchFile(self, filename):
         self.printwt('searching specific file ...')
         client_search_file = search_file.SearchFile(self.name, self.host, self.UDP_port, filename)
@@ -200,6 +194,7 @@ class Client:
         self.printwt('Sending search specific file request to server...')
         self.sendToServer(search_file_object, 'search-file')
 
+    @staticmethod
     def get_file(file_name, search_path):
         result = []
         # Walking top-down from the root
@@ -210,7 +205,8 @@ class Client:
                 print("File Not Found")
         return result
 
-    def get_all_file(self, DATA_FOLDER="./Data"):
+    @staticmethod
+    def get_all_file(DATA_FOLDER="./Data"):
         """Get all files and make a list to process each files."""
         files = []
         os.chdir(DATA_FOLDER)
@@ -222,11 +218,11 @@ class Client:
     # TODO 4.8 download() -
 
     # 4.9 updateContact()  - client can update their client information
-    def updateContact(self, ip_address, udp_socket, tcp_socket):
+    def updateContact(self, ip_address, udp_port, tcp_port):
         # must update this clients sockets also
         self.host = ip_address
-        self.UDP_port = udp_socket
-        self.TCP_port = tcp_socket
+        self.UDP_port = udp_port
+        self.TCP_port = tcp_port
 
         # close the old sockets and create and bind the new ones and update the binding
         self.printwt('Closing old sockets and rebinding the new ones...')
@@ -310,8 +306,10 @@ class Client:
             filename = input('enter file name to search: ')
             client.searchFile(filename)
         elif query == 'updateContact':
-            newip = input('enter new ip address: ')
-            pass
+            newIP = input('enter new ip address: ')
+            newUDPPort = input('enter new UDP port: ')
+            newTCPPort = input(' enter new TCP port: ')
+            client.updateContact(newIP, newUDPPort, newTCPPort)
 
 
 def main():
