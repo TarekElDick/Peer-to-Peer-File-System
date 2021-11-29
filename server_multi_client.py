@@ -5,7 +5,7 @@ import socket
 from datetime import datetime
 from Client_Requests_Classes import publish, register, remove, retrieve_all, retrieve_infot, search_file, unregister, \
     update_contact
-import msvcrt
+
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
 # only one thread uses the sendto() method at a time
@@ -64,8 +64,6 @@ class serverMultiClient():
     def configure_server(self):
         """Configure the server"""
 
-        # TODO implement function to retrieve saved state if not empty
-
         try:
             self.printwt('Loading database')
             self.list_of_client_files = pickle.load(open('server_saved_data/clientFiles.p', 'rb'))
@@ -85,7 +83,6 @@ class serverMultiClient():
 
     def try_registering(self, re_request):
         print(re_request.getHeader())
-        # TODO implement ack log file.
 
         client_address = (re_request.host, re_request.udp_socket)
 
@@ -386,7 +383,6 @@ class serverMultiClient():
     # 7. shutdown_server() - stop the server
     def shutdown_server(self):
         """ Shutdown the UDP server """
-        # TODO save the states
         pickle.dump(self.list_of_client_files, open("server_saved_data/clientFiles.p", "wb"))
         pickle.dump(self.list_of_registered_clients, open("server_saved_data/registeredClients.p", "wb"))
         pickle.dump(self.list_of_acknowledgements, open("server_saved_data/acknowledgements.p", "wb"))
@@ -398,16 +394,21 @@ class serverMultiClient():
     # 3. wait_for_client() -Method to handle multiple clients by using an
     # infinite loop
     def wait_for_client(self):
-        while True:
-            try:
-                data, client_address = self.sock.recvfrom(1024)
-                c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
+        try:
+            while True:
 
-                c_thread.daemon = True
-                c_thread.start()
+                try:
+                    data, client_address = self.sock.recvfrom(1024)
+                    c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
 
-            except KeyboardInterrupt:
-                self.shutdown_server()
+                    c_thread.daemon = True
+                    c_thread.start()
+
+                except OSError as e:
+                    print(e)
+
+        except KeyboardInterrupt:
+            self.shutdown_server()
 
 
 # 4. main() - Driver code to test the program

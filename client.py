@@ -318,14 +318,14 @@ def main():
     query = input('> Enter Server IPv4 Address: ')
     serverAddress = (query, 3001)
     query = input('> Enter Client Name: ')
-    client = Client(query, socket.gethostbyname(socket.gethostname()), 0, 0, serverAddress)
+    client = Client(query, socket.gethostbyname(socket.gethostname()), 4000, 5000, serverAddress)
     client.configure_client()
 
     try:
         print('type [help] or [?] for a list of commands at any time.')
         print('type [exit] to exit, or terminate the client')
         while query != 'exit':
-            query = input('> ')
+            query = input('')
 
             client_thread = threading.Thread(target=client.handle_commands, args=(client, query))
             client_thread.daemon = True
