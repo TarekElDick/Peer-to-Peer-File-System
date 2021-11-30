@@ -148,6 +148,7 @@ class Client:
             choice = int(choice)
             if choice != 0:
                 self.list_of_available_files = [self.list_of_available_files[choice - 1]]
+                #
         else:
             choice = [int(x) for x in choice.split(",")]
             user_choices = []
