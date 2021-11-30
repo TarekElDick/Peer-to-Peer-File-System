@@ -169,7 +169,7 @@ class Client:
     def remove(self):
         self.printwt("Select the files which you want to remove[Add File No. Seprated by ',']:")
         count_remove = 1
-        for file in self.list_of_available_files:
+        for file in self.list_of_files_to_remove:
             self.printwt(str(count_remove) + ". " + file)
             count_remove += 1
         self.printwt("0. remove all files")
@@ -177,7 +177,7 @@ class Client:
         if choice_to_remove.isnumeric():
             choice = int(choice_to_remove)
             if choice != 0:
-                self.list_of_available_files = [self.list_of_files_to_remove[choice - 1]]
+                self.list_of_files_to_remove = [self.list_of_files_to_remove[choice - 1]]
         else:
             choice = [int(x) for x in choice_to_remove.split(",")]
             user_choices = []
@@ -387,7 +387,6 @@ class Client:
                 self.printwt(f'Received {requestType} reply from server : {server_address}')
                 self.printwt(msg_from_server.decode())
                 # TODO: Hard coded for 'search-file'
-                print(msg_from_server)
                 if "SEARCH-" in msg_from_server.decode('utf-8'):
                     msg = str(msg_from_server.decode('utf-8'))
                     msg = msg.replace("[", "")
@@ -438,7 +437,7 @@ class Client:
             filename = input('> Enter file name to search: ')
             response = client.searchFile(filename)
             if response[0] == "SEARCH-FILE":
-                self.get_file_from_peer(host=response[3], port=response[4], file_name=filename)
+                client.get_file_from_peer(host=response[3], port=response[4], file_name=filename)
             elif response[0] == "SEARCH-ERROR":
                 pass
                 #  Add Reason from response
@@ -454,7 +453,7 @@ def main():
     query = input('> Enter Server IPv4 Address: ')
     serverAddress = (query, 3001)
     query = input('> Enter Client Name: ')
-    client = Client(query, socket.gethostbyname(socket.gethostname()), 4000, 5000, serverAddress)
+    client = Client(query, socket.gethostbyname(socket.gethostname()), 0, 0, serverAddress)
     client.configure_client()
 
     try:
