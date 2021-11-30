@@ -392,13 +392,13 @@ class serverMultiClient():
 
         self.printwt('Shutting down server...')
         self.sock.close()
-        time.sleep(1000)
+        time.sleep(1)
         print('3')
-        time.sleep(1000)
+        time.sleep(1)
         print('2')
-        time.sleep(1000)
+        time.sleep(1)
         print('1')
-        time.sleep(1000)
+        time.sleep(1)
         print('bye!!!')
         return 1
 
