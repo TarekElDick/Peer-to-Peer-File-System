@@ -368,7 +368,8 @@ class serverMultiClient():
     def check_if_already_ack(self, client_request):
         for s_list in self.list_of_acknowledgements:
             print(s_list)
-            if s_list[0] == client_request.name and s_list[1] == client_request.rid and s_list[3][1] == client_request.host and s_list[3][2] == client_request.udp_socket:
+            if s_list[0] == client_request.name and s_list[1] == client_request.rid and s_list[3][
+                1] == client_request.host and s_list[3][2] == client_request.udp_socket:
                 print(client_request.getHeader())
                 self.printwt(f'Already received this request. Resending the reply : {client_request.name}')
                 self.sock.sendto(s_list[2].encode('utf-8'), s_list[3])
@@ -390,6 +391,18 @@ class serverMultiClient():
         pickle.dump(self.list_of_registered_clients, open("server_saved_data/registeredClients.p", "wb"))
         pickle.dump(self.list_of_acknowledgements, open("server_saved_data/acknowledgements.p", "wb"))
 
+        with open('server_saved_data/clientFiles.txt', 'w') as f:
+            for files in self.list_of_client_files:
+                if isinstance(files, publish.Publish):
+                    f.write(str(files.getHeader()))
+        with open('server_saved_data/registeredClients.txt', 'w') as f:
+            for files in self.list_of_registered_clients:
+                if isinstance(files, register.Register):
+                    f.write(str(files.getHeader()))
+        with open('server_saved_data/acknowledgements.txt', 'w') as f:
+            for files in self.list_of_acknowledgements:
+                f.write(str(files) + '\n')
+
         self.printwt('Shutting down server...')
         self.sock.close()
         time.sleep(1)
@@ -406,21 +419,17 @@ class serverMultiClient():
     # 3. wait_for_client() -Method to handle multiple clients by using an
     # infinite loop
     def wait_for_client(self):
-        try:
-            while True:
+        while True:
 
-                try:
-                    data, client_address = self.sock.recvfrom(1024)
-                    c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
+            try:
+                data, client_address = self.sock.recvfrom(1024)
+                c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
 
-                    c_thread.daemon = True
-                    c_thread.start()
+                c_thread.daemon = True
+                c_thread.start()
 
-                except OSError as e:
-                    print(e)
-
-        except KeyboardInterrupt:
-            self.shutdown_server()
+            except OSError as e:
+                break
 
 
 # 4. main() - Driver code to test the program
@@ -429,7 +438,14 @@ def main():
     serverAddress = (query, 3001)
     udp_server_multi_client = serverMultiClient(serverAddress[0], serverAddress[1])
     udp_server_multi_client.configure_server()
-    udp_server_multi_client.wait_for_client()
+
+    try:
+        wait_thread = threading.Thread(target=udp_server_multi_client.wait_for_client)
+        wait_thread.daemon = True
+        wait_thread.start()
+        sys.stdin.read()
+    except KeyboardInterrupt:
+        udp_server_multi_client.shutdown_server()
 
 
 if __name__ == '__main__':
