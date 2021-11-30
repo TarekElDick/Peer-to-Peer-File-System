@@ -5,8 +5,14 @@ import threading
 import socket
 import time
 from datetime import datetime
+from config import SERVER_ADDRESS
 from Client_Requests_Classes import publish, register, remove, retrieve_all, retrieve_infot, search_file, unregister, \
     update_contact
+from Client_Requests_Classes.register import Register
+from Client_Requests_Classes.unregister import Unregister
+from Client_Requests_Classes.update_contact import UpdateContact
+from Client_Requests_Classes.publish import publish_req
+from Client_Requests_Classes.remove import remove_req
 
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
@@ -17,6 +23,7 @@ class serverMultiClient():
         self.host = host  # Host Address
         self.port = port  # Host port
         self.sock = None  # Host Socket
+        self.socket_lock = threading.Lock()
         self.list_of_registered_clients = list()
         self.list_of_client_files = list()
         self.list_of_acknowledgements = list()
@@ -35,25 +42,29 @@ class serverMultiClient():
 
         self.printwt(f'Received request from client {client_address}')
         client_request = pickle.loads(client_data)
+        self.printwt(client_request)
 
         # Find out what kind of object it is and send it to the designated function
-        if isinstance(client_request, register.Register):
+        if isinstance(client_request, Register):
             if not self.check_if_already_ack(client_request):
                 self.try_registering(client_request)
-        elif isinstance(client_request, unregister.Unregister):
+            return
+        elif isinstance(client_request, Unregister):
             if not self.check_if_already_ack(client_request):
                 self.try_unregistering(client_request)
-        elif isinstance(client_request, update_contact.UpdateContact):
+        elif isinstance(client_request, UpdateContact):
             if not self.check_if_already_ack(client_request):
                 self.try_updatingContact(client_request)
-        elif isinstance(client_request, publish.publish_req):
+        elif isinstance(client_request, publish_req):
             if not self.check_if_already_ack(client_request):
                 self.try_publishing(client_request)
-        elif isinstance(client_request, remove.remove_req):
+        elif isinstance(client_request, remove_req):
             if not self.check_if_already_ack(client_request):
                 self.try_removeFile(client_request)
+
         elif isinstance(client_request, retrieve_all.RetrieveAll):
             if not self.check_if_already_ack(client_request):
+                self.printwt("received retrieve all request 444444:")
                 self.try_retrieve_all(client_request, client_address)
         elif isinstance(client_request, retrieve_infot.RetrieveInfot):
             if not self.check_if_already_ack(client_request):
@@ -227,6 +238,7 @@ class serverMultiClient():
         self.list_of_acknowledgements.append(array_to_append)
         self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
 
+
     def try_retrieve_all(self, up_request, client_address):
         list_of_files = " "
         msg_to_client = "RETRIEVE-ALL  |  " + str(up_request.rid) + "["
@@ -255,14 +267,14 @@ class serverMultiClient():
 
                         for files in range(len(self.list_of_client_files[i].list_of_available_files)):
                             #  self.printwt(self.list_of_client_files[i].list_of_available_files[files])
-                            list_of_files = (
-                                    list_of_files + " , " + self.list_of_client_files[i].list_of_available_files[
-                                files])
+                            list_of_files = (list_of_files + " , " + \
+                                             self.list_of_client_files[i].list_of_available_files[files])
 
                         else:
 
-                            msg_to_client = (msg_to_client + '|' + clientname + ' | ' + str(ipaddr) + ' | ' + str(
-                                tcpport) + '|' + list_of_files + ']')
+                            msg_to_client = (msg_to_client + '|' + \
+                                             (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
+                                             list_of_files + ']')
 
         if registered:
             self.printwt("end of client lists")
@@ -299,11 +311,12 @@ class serverMultiClient():
 
                             list_of_files = " "
                             for files in range(len(self.list_of_client_files[i].list_of_available_files)):
-                                list_of_files = (list_of_files + " , " +
+                                list_of_files = (list_of_files + " , " + \
                                                  self.list_of_client_files[i].list_of_available_files[files])
                             else:
-                                msg_to_client = (msg_to_client + '|' + clientname + ' | ' + str(ipaddr) + ' | ' + str(
-                                    tcpport) + '|' + list_of_files + ']')
+                                msg_to_client = (msg_to_client + '|' + \
+                                                 (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
+                                                 list_of_files + ']')
                                 break
 
         if infot:
