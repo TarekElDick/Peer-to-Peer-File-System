@@ -5,15 +5,15 @@ import threading
 import socket
 import time
 from datetime import datetime
-from config import SERVER_ADDRESS
-from Client_Requests_Classes import publish, register, remove, retrieve_all, retrieve_infot, search_file, unregister, \
-    update_contact
 from Client_Requests_Classes.register import Register
 from Client_Requests_Classes.unregister import Unregister
 from Client_Requests_Classes.update_contact import UpdateContact
 from Client_Requests_Classes.publish import publish_req
 from Client_Requests_Classes.remove import remove_req
-
+from Client_Requests_Classes.retrieve_all import RetrieveAll
+from Client_Requests_Classes.retrieve_infot import RetrieveInfot
+from Client_Requests_Classes.search_file import SearchFile
+from Client_Requests_Classes.download import Download
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
 # only one thread uses the sendto() method at a time
@@ -45,33 +45,24 @@ class serverMultiClient():
         self.printwt(client_request)
 
         # Find out what kind of object it is and send it to the designated function
-        if isinstance(client_request, Register):
-            if not self.check_if_already_ack(client_request):
-                self.try_registering(client_request)
+        if self.check_if_already_ack(client_request):
             return
+        elif isinstance(client_request, Register):
+            self.try_registering(client_request)
         elif isinstance(client_request, Unregister):
-            if not self.check_if_already_ack(client_request):
-                self.try_unregistering(client_request)
+            self.try_unregistering(client_request)
         elif isinstance(client_request, UpdateContact):
-            if not self.check_if_already_ack(client_request):
-                self.try_updatingContact(client_request)
+            self.try_updatingContact(client_request)
         elif isinstance(client_request, publish_req):
-            if not self.check_if_already_ack(client_request):
-                self.try_publishing(client_request)
+            self.try_publishing(client_request)
         elif isinstance(client_request, remove_req):
-            if not self.check_if_already_ack(client_request):
-                self.try_removeFile(client_request)
-
-        elif isinstance(client_request, retrieve_all.RetrieveAll):
-            if not self.check_if_already_ack(client_request):
-                self.printwt("received retrieve all request 444444:")
-                self.try_retrieve_all(client_request, client_address)
-        elif isinstance(client_request, retrieve_infot.RetrieveInfot):
-            if not self.check_if_already_ack(client_request):
-                self.try_retrieveInfot(client_request, client_address)
-        elif isinstance(client_request, search_file.SearchFile):
-            if not self.check_if_already_ack(client_request):
-                self.try_searchFile(client_request, client_address)
+            self.try_removeFile(client_request)
+        elif isinstance(client_request, RetrieveAll):
+            self.try_retrieve_all(client_request, client_address)
+        elif isinstance(client_request, RetrieveInfot):
+            self.try_retrieveInfot(client_request, client_address)
+        elif isinstance(client_request, SearchFile):
+            self.try_searchFile(client_request, client_address)
 
     # 3. configure_server() - Creates a UDP socket that uses IPv4 and binds the server to a specific address.
     def configure_server(self):
@@ -128,7 +119,7 @@ class serverMultiClient():
             client_address = self.get_client_udp_address(de_request)
             # if the client is registered then unregister them
             for obj in self.list_of_registered_clients:
-                if isinstance(obj, register.Register):
+                if isinstance(obj,Register):
                     if obj.name == de_request.name:
                         # delete the client from the database/list
                         self.list_of_registered_clients.remove(obj)
@@ -149,7 +140,7 @@ class serverMultiClient():
         if self.check_if_client(up_request):
             # if the client is registered then we can update the register object
             for obj in self.list_of_registered_clients:
-                if isinstance(obj, register.Register):  # for checking if client they are all register objects but
+                if isinstance(obj, Register):  # for checking if client they are all register objects but
                     # isinstance is important to allow us to call obj.name
                     if obj.name == up_request.name:
                         obj.host = up_request.host
@@ -372,7 +363,7 @@ class serverMultiClient():
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
-                          register.Register):  # for checking if client they are all register objects but isinstance
+                          Register):  # for checking if client they are all register objects but isinstance
                 # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return True
@@ -392,7 +383,7 @@ class serverMultiClient():
     def get_client_udp_address(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
-                          register.Register):  # for checking if client they are all register objects but isinstance
+                          Register):  # for checking if client they are all register objects but isinstance
                 # is important to allow us to call obj.name
                 if obj.name == client_request.name:
                     return obj.host, obj.udp_socket
@@ -406,11 +397,11 @@ class serverMultiClient():
 
         with open('server_saved_data/clientFiles.txt', 'w') as f:
             for files in self.list_of_client_files:
-                if isinstance(files, publish.Publish):
+                if isinstance(files, publish_req):
                     f.write(str(files.getHeader()))
         with open('server_saved_data/registeredClients.txt', 'w') as f:
             for files in self.list_of_registered_clients:
-                if isinstance(files, register.Register):
+                if isinstance(files, Register):
                     f.write(str(files.getHeader()))
         with open('server_saved_data/acknowledgements.txt', 'w') as f:
             for files in self.list_of_acknowledgements:
