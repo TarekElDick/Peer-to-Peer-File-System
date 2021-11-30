@@ -31,6 +31,7 @@ class Client:
         self.SERVER_ADDRESS = SERVER_ADDRESS
         self.DATA_FOLDER = "./Data"
         self.list_of_available_files = self.get_all_file()
+        self.list_of_files_to_remove = self.get_all_file()
 
         # self.file_name = file_name
 
@@ -99,7 +100,7 @@ class Client:
                         conn.sendall(chunk_obj)
                 else:
                     # TODO: File Doesn't exist, Send [DOWNLOAD-ERROR]
-                    conn.sendall(pickle.dumps(Download(request_type="DOWNLOAD-ERROR",reason="File Doesn't exist")))
+                    conn.sendall(pickle.dumps(Download(request_type="DOWNLOAD-ERROR", reason="File Doesn't exist")))
 
         finally:
             # Close the connection after sending the File
@@ -108,7 +109,7 @@ class Client:
     def get_file_as_chunks(self, requested_file_name):
         # open file and count the number of characters
         self.printwt("Creating Chunks for: " + str(requested_file_name))
-        file_to_process = self.DATA_FOLDER +"/" + requested_file_name
+        file_to_process = self.DATA_FOLDER + "/" + requested_file_name
         with open(file_to_process, "r") as a_file:
             data = a_file.read()
             number_of_characters = len(data)
@@ -140,7 +141,7 @@ class Client:
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             conn.connect((host, port))
-            download_request = Download(request_type="DOWNLOAD",file_name=file_name)
+            download_request = Download(request_type="DOWNLOAD", file_name=file_name)
             self.printwt(download_request.getHeader())
             download_request = pickle.dumps(download_request)
             # Send Download Request
@@ -175,7 +176,7 @@ class Client:
                         break
 
                 self.printwt(file_name + " is successfully retrieved")
-                with open(self.DATA_FOLDER + "/new_"+file_name, "w") as f:
+                with open(self.DATA_FOLDER + "/new_" + file_name, "w") as f:
                     f.write(''.join(data))
                 self.printwt(file_name + " is successfully created in Data Folder")
 
@@ -245,12 +246,33 @@ class Client:
 
     # TODO 4.4 remove() - remove the files that a client has already published
     def remove(self):
-        self.printwt("attempt to remove a file to client's list at the server")
-        client_remove_object = remove.remove_req(self.name, self.host, self.UDP_port, self.list_of_files_to_remove)
-        print(client_remove_object.getHeader())
-        remove_object = pickle.dumps(client_remove_object)
+        self.printwt("Select the files which you want to remove[Add File No. Seprated by ',']:")
+        count_remove = 1
+        for file in self.list_of_available_files:
+            self.printwt(str(count_remove) + ". " + file)
+            count_remove += 1
+        self.printwt("0. remove all files")
+        choice_to_remove = input(">>")
+        if choice_to_remove.isnumeric():
+            choice = int(choice_to_remove)
+            if choice != 0:
+                self.list_of_available_files = [self.list_of_files_to_remove[choice - 1]]
+        else:
+            choice = [int(x) for x in choice_to_remove.split(",")]
+            user_choices = []
+            for c in choice:
+                user_choices.append(self.list_of_files_to_remove[c - 1])
+            self.list_of_files_to_remove = user_choices
+        self.printwt("These Files will be published: " + str(self.list_of_files_to_remove))
+        self.printwt("attempt to remove a file from client's list at the server")
+
+        client_removing_object = remove.remove_req(self.name, self.host, self.UDP_port,
+                                                   self.list_of_files_to_remove)
+        self.printwt(client_removing_object.getHeader())
+
+        removing_object = pickle.dumps(client_removing_object)
         self.printwt("send remove request to server")
-        self.sendToServer(remove_object, 'remove')
+        self.sendToServer(removing_object, 'remove')
 
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
@@ -284,7 +306,6 @@ class Client:
         search_file_object = pickle.dumps(client_search_file)
         self.printwt('Sending search specific file request to server...')
         return self.sendToServer(search_file_object, 'search-file')
-
 
     def get_file(file_name, search_path):
         result = []
@@ -401,6 +422,8 @@ class Client:
             client.unregister()
         elif query == 'publish':
             client.publish()
+        elif query == 'remove':
+            client.remove()
 
 
         elif query == 'retrieveAll':
@@ -414,12 +437,10 @@ class Client:
         elif query == 'updateContact':
             newip = input('> Enter new ip address: ')
         elif query == 'download':
-           # client.register()
-          #  client.publish()
             filename = input('> Enter file name to search: ')
             response = client.searchFile(filename)
             if response[0] == "SEARCH-FILE":
-                self.get_file_from_peer(host=response[3],port=response[4] ,file_name=filename)
+                self.get_file_from_peer(host=response[3], port=response[4], file_name=filename)
             elif response[0] == "SEARCH-ERROR":
                 pass
                 # TODO: Add Reason from response
