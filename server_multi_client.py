@@ -3,6 +3,7 @@ import sys
 import pickle
 import threading
 import socket
+import time
 from datetime import datetime
 from Client_Requests_Classes import publish, register, remove, retrieve_all, retrieve_infot, search_file, unregister, \
     update_contact
@@ -391,6 +392,14 @@ class serverMultiClient():
 
         self.printwt('Shutting down server...')
         self.sock.close()
+        time.sleep(1000)
+        print('3')
+        time.sleep(1000)
+        print('2')
+        time.sleep(1000)
+        print('1')
+        time.sleep(1000)
+        print('bye!!!')
         return 1
 
     # 3. wait_for_client() -Method to handle multiple clients by using an
