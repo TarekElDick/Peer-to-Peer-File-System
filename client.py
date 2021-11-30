@@ -176,16 +176,16 @@ class Client:
         self.printwt("0. remove all files")
         choice_to_remove = input(">>")
         if choice_to_remove.isnumeric():
-            choice = int(choice_to_remove)
-            if choice != 0:
-                self.list_of_files_to_remove = [self.list_of_files_to_remove[choice - 1]]
+            choice_to_remove = int(choice_to_remove)
+            if choice_to_remove != 0:
+                self.list_of_files_to_remove = [self.list_of_files_to_remove[choice_to_remove - 1]]
         else:
             choice = [int(x) for x in choice_to_remove.split(",")]
             user_choices = []
-            for c in choice:
+            for c in choice_to_remove:
                 user_choices.append(self.list_of_files_to_remove[c - 1])
             self.list_of_files_to_remove = user_choices
-        self.printwt("These Files will be published: " + str(self.list_of_files_to_remove))
+        self.printwt("These Files will be removed: " + str(self.list_of_files_to_remove))
         self.printwt("attempt to remove a file from client's list at the server")
 
         client_removing_object = remove.remove_req(self.name, self.host, self.UDP_port,

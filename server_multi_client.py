@@ -27,6 +27,7 @@ class serverMultiClient():
         self.list_of_registered_clients = list()
         self.list_of_client_files = list()
         self.list_of_acknowledgements = list()
+        self.list_of_files_to_remove = list()
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS' <message>.
@@ -266,7 +267,6 @@ class serverMultiClient():
                             msg_to_client = (msg_to_client + '|' + \
                                              (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
                                              list_of_files + ']')
-
         if registered:
             self.printwt("end of client lists")
             self.printwt(msg_to_client)
