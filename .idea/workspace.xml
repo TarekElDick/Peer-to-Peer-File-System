@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="ad24b281-0700-4e7d-8417-eaf7576557ec" name="Changes" comment="tcp final">
-      <change beforePath="$PROJECT_DIR$/client.py" beforeDir="false" afterPath="$PROJECT_DIR$/client.py" afterDir="false" />
-    </list>
+    <list default="true" id="ad24b281-0700-4e7d-8417-eaf7576557ec" name="Changes" comment="remove , choice" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -202,7 +200,7 @@
       <workItem from="1637975979328" duration="66000" />
       <workItem from="1637978655174" duration="2829000" />
       <workItem from="1638133065479" duration="4898000" />
-      <workItem from="1638230515009" duration="3644000" />
+      <workItem from="1638230515009" duration="4523000" />
     </task>
     <task id="LOCAL-00001" summary="punlishing class &amp; upload method">
       <created>1637088899701</created>
@@ -477,7 +475,14 @@
       <option name="project" value="LOCAL" />
       <updated>1638234501062</updated>
     </task>
-    <option name="localTasksCounter" value="40" />
+    <task id="LOCAL-00040" summary="remove , choice">
+      <created>1638235731302</created>
+      <option name="number" value="00040" />
+      <option name="presentableId" value="LOCAL-00040" />
+      <option name="project" value="LOCAL" />
+      <updated>1638235731302</updated>
+    </task>
+    <option name="localTasksCounter" value="41" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -497,7 +502,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="add published reply" />
     <MESSAGE value="fix minor errors" />
     <MESSAGE value="publish denied" />
     <MESSAGE value="remove" />
@@ -522,13 +526,14 @@
     <MESSAGE value="the client can choose which files to publish" />
     <MESSAGE value="tcp server + client" />
     <MESSAGE value="tcp final" />
-    <option name="LAST_COMMIT_MESSAGE" value="tcp final" />
+    <MESSAGE value="remove , choice" />
+    <option name="LAST_COMMIT_MESSAGE" value="remove , choice" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Peer_to_Peer_File_System$.coverage" NAME=" Coverage Results" MODIFIED="1637119577331" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Peer_to_Peer_File_System$Publishing.coverage" NAME="Publishing Coverage Results" MODIFIED="1637631680367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Peer_to_Peer_File_System$delete_test.coverage" NAME="delete_test Coverage Results" MODIFIED="1637880855842" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/Peer_to_Peer_File_System$server_multi_client.coverage" NAME="server_multi_client Coverage Results" MODIFIED="1638234585443" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/Peer_to_Peer_File_System$client.coverage" NAME="client Coverage Results" MODIFIED="1638234604661" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Peer_to_Peer_File_System$server_multi_client.coverage" NAME="server_multi_client Coverage Results" MODIFIED="1638234910605" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Peer_to_Peer_File_System$client.coverage" NAME="client Coverage Results" MODIFIED="1638234932286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
