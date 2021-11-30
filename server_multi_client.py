@@ -410,7 +410,6 @@ class serverMultiClient():
             while True:
 
                 try:
-                    sys.stdin.read()
                     data, client_address = self.sock.recvfrom(1024)
                     c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
 
