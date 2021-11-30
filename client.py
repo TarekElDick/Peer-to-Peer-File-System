@@ -42,7 +42,8 @@ class Client:
         current_date_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
         print(f'[{current_date_time}] {msg}')
 
-    # 3. configure_client() - Creates a UDP socket that uses IPv4 and binds the client to a specific address for listening.
+    # 3. configure_client() - Creates a UDP socket that uses IPv4 and binds the client to a specific address for
+    # listening.
     def configure_client(self):
 
         # 3.1. Create the UDP socket with IPv4 Addressing
@@ -61,7 +62,7 @@ class Client:
         self.TCP_sock.bind((self.host, self.TCP_port))
         self.TCP_port = self.TCP_sock.getsockname()[1]
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
-        # TODO set time out for TCP socket and implement it.
+        #  set time out for TCP socket and implement it.
         t = threading.Thread(target=self.run_tcp_server, args=())
         t.setDaemon(True)
         t.start()
@@ -86,26 +87,169 @@ class Client:
 
             if isinstance(obj, Download):
                 if obj.file_name in self.list_of_available_files:
-                    # TODO: Start sending the file
+                    #  Start sending the file
                     chunks = self.get_file_as_chunks(obj.file_name)
                     for i, chunk in enumerate(chunks):
                         if i + 1 >= len(chunks):
-                            # TODO: It's a last chunk
+                            #  It's a last chunk
                             chunk_obj = pickle.dumps(
                                 File(request_type="FILE-END", file_name=obj.file_name, chunk_id=i + 1, text=chunk))
                         else:
-                            # TODO: It's not a last chunk
+                            #  It's not a last chunk
                             chunk_obj = pickle.dumps(
                                 File(request_type="FILE", file_name=obj.file_name, chunk_id=i + 1, text=chunk))
                         conn.sendall(chunk_obj)
                 else:
-                    # TODO: File Doesn't exist, Send [DOWNLOAD-ERROR]
+                    # File Doesn't exist, Send [DOWNLOAD-ERROR]
                     conn.sendall(pickle.dumps(Download(request_type="DOWNLOAD-ERROR", reason="File Doesn't exist")))
-
         finally:
             # Close the connection after sending the File
             conn.close()
 
+    # 4. Interactions with the server
+    # 4.1. register() - registers the client with the server.
+
+    def register(self):
+
+        # Send the server formatted data that it can expect for registration.
+        self.printwt('Attempting to register with the server...')
+
+        # Create a registration object that can be sent to the server using the pickle library.
+        client_registration_object = register.Register(self.name, self.host, self.UDP_port, self.TCP_port)
+        print(client_registration_object.getHeader())
+
+        # create a local variable that holds the serialized registration object to keep code neat and tidy.
+        register_object = pickle.dumps(client_registration_object)
+
+        # send the pickled object to the server using a function we define below. #5 sendToServer().
+        self.printwt('Sending registration data to server...')
+        self.sendToServer(register_object, 'register')
+
+    # 4.2 unregister() - unregister the client with the server.
+    def unregister(self):
+        self.printwt('Attempting to unregister with the server...')
+
+        client_unregister_object = unregister.Unregister(self.name)
+        print(client_unregister_object.getHeader())
+
+        unregister_object = pickle.dumps(client_unregister_object)
+
+        self.printwt('Sending de-registration data to the server...')
+        self.sendToServer(unregister_object, 'unregister')
+
+    #  4.3 publish() - publish the file names that a client has ready to be shared
+    def publish(self):
+        self.printwt("Select the files which you want to publish[Add File No. Seprated by ',']:")
+        count = 1
+        for file in self.list_of_available_files:
+            self.printwt(str(count) + ". " + file)
+            count += 1
+        self.printwt("0. Add all files")
+        choice = input(">>")
+        if choice.isnumeric():
+            choice = int(choice)
+            if choice != 0:
+                self.list_of_available_files = [self.list_of_available_files[choice - 1]]
+        else:
+            choice = [int(x) for x in choice.split(",")]
+            user_choices = []
+            for c in choice:
+                user_choices.append(self.list_of_available_files[c - 1])
+            self.list_of_available_files = user_choices
+        self.printwt("These Files will be published: " + str(self.list_of_available_files))
+        self.printwt("attempt to add a file to client's list at the server")
+
+        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port,
+                                                       self.list_of_available_files)
+        self.printwt(client_publishing_object.getHeader())
+
+        publishing_object = pickle.dumps(client_publishing_object)
+        self.printwt("send publishing request to server")
+        self.sendToServer(publishing_object, 'publish')
+
+    #  4.4 remove() - remove the files that a client has already published
+    def remove(self):
+        self.printwt("Select the files which you want to remove[Add File No. Seprated by ',']:")
+        count_remove = 1
+        for file in self.list_of_available_files:
+            self.printwt(str(count_remove) + ". " + file)
+            count_remove += 1
+        self.printwt("0. remove all files")
+        choice_to_remove = input(">>")
+        if choice_to_remove.isnumeric():
+            choice = int(choice_to_remove)
+            if choice != 0:
+                self.list_of_available_files = [self.list_of_files_to_remove[choice - 1]]
+        else:
+            choice = [int(x) for x in choice_to_remove.split(",")]
+            user_choices = []
+            for c in choice:
+                user_choices.append(self.list_of_files_to_remove[c - 1])
+            self.list_of_files_to_remove = user_choices
+        self.printwt("These Files will be published: " + str(self.list_of_files_to_remove))
+        self.printwt("attempt to remove a file from client's list at the server")
+
+        client_removing_object = remove.remove_req(self.name, self.host, self.UDP_port,
+                                                   self.list_of_files_to_remove)
+        self.printwt(client_removing_object.getHeader())
+
+        removing_object = pickle.dumps(client_removing_object)
+        self.printwt("send remove request to server")
+        self.sendToServer(removing_object, 'remove')
+
+    # 4.5 retrieveAll() - retrieve all the information from the server
+    def retrieveAll(self):
+        self.printwt('Attempting retrieving all information from the server...')
+
+        client_retrieve_all_object = retrieve_all.RetrieveAll(self.name, self.host, self.UDP_port)
+        print(client_retrieve_all_object.getHeader())
+
+        retrieve_object = pickle.dumps(client_retrieve_all_object)
+
+        self.printwt('Sending retrieving all request to server...')
+        self.sendToServer(retrieve_object, 'retrieve-all')
+
+    #  4.6 retrieveInfoT() - retrieve info about a specific peer
+    def retrieveInfot(self, peer_name):
+        self.printwt('retrieving all files for specific client...')
+        client_retrieve_infot = \
+            retrieve_infot.RetrieveInfot(self.name, self.host, self.UDP_port, peer_name)
+        print(client_retrieve_infot.getHeader())
+
+        retrieve_infot_object = pickle.dumps(client_retrieve_infot)
+        self.printwt('Sending retrieving specific peer files request to server...')
+        self.sendToServer(retrieve_infot_object, 'retrieve-infot')
+
+    #  4.7 searchFile() - check with Aida if that's what is required
+    def searchFile(self, filename):
+        self.printwt('searching specific file ...')
+        client_search_file = search_file.SearchFile(self.name, self.host, self.TCP_port, filename)
+        print(client_search_file.getHeader())
+
+        search_file_object = pickle.dumps(client_search_file)
+        self.printwt('Sending search specific file request to server...')
+        return self.sendToServer(search_file_object, 'search-file')
+
+    def get_file(file_name, search_path):
+        result = []
+        # Walking top-down from the root
+        for root, dir, files in os.walk(search_path):
+            if file_name in files:
+                result.append(os.path.join(root, file_name))
+            else:
+                print("File Not Found")
+        return result
+
+    def get_all_file(self):
+        """Get all files and make a list to process each files."""
+        files = []
+        os.chdir(self.DATA_FOLDER)
+        for file in glob.glob("*"):
+            files.append(file)
+        os.chdir("..")
+        return files
+
+    # 4.8 download() -
     def get_file_as_chunks(self, requested_file_name):
         # open file and count the number of characters
         self.printwt("Creating Chunks for: " + str(requested_file_name))
@@ -183,150 +327,6 @@ class Client:
         finally:
             conn.close()
             self.printwt("Closing the connection with " + str(host) + ":" + str(port))
-
-    # 4. Interactions with the server
-    # 4.1. register() - registers the client with the server.
-    def register(self):
-
-        # Send the server formatted data that it can expect for registration.
-        self.printwt('Attempting to register with the server...')
-
-        # Create a registration object that can be sent to the server using the pickle library.
-        client_registration_object = register.Register(self.name, self.host, self.UDP_port, self.TCP_port)
-        print(client_registration_object.getHeader())
-
-        # create a local variable that holds the serialized registration object to keep code neat and tidy.
-        register_object = pickle.dumps(client_registration_object)
-
-        # send the pickled object to the server using a function we define below. #5 sendToServer().
-        self.printwt('Sending registration data to server...')
-        self.sendToServer(register_object, 'register')
-
-    # 4.2 unregister() - unregister the client with the server.
-    def unregister(self):
-        self.printwt('Attempting to unregister with the server...')
-
-        client_unregister_object = unregister.Unregister(self.name)
-        print(client_unregister_object.getHeader())
-
-        unregister_object = pickle.dumps(client_unregister_object)
-
-        self.printwt('Sending de-registration data to the server...')
-        self.sendToServer(unregister_object, 'unregister')
-
-    # TODO 4.3 publish() - publish the file names that a client has ready to be shared
-    def publish(self):
-        self.printwt("Select the files which you want to publish[Add File No. Seprated by ',']:")
-        count = 1
-        for file in self.list_of_available_files:
-            self.printwt(str(count) + ". " + file)
-            count += 1
-        self.printwt("0. Add all files")
-        choice = input(">>")
-        if choice.isnumeric():
-            choice = int(choice)
-            if choice != 0:
-                self.list_of_available_files = [self.list_of_available_files[choice - 1]]
-        else:
-            choice = [int(x) for x in choice.split(",")]
-            user_choices = []
-            for c in choice:
-                user_choices.append(self.list_of_available_files[c - 1])
-            self.list_of_available_files = user_choices
-        self.printwt("These Files will be published: " + str(self.list_of_available_files))
-        self.printwt("attempt to add a file to client's list at the server")
-
-        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port,
-                                                       self.list_of_available_files)
-        self.printwt(client_publishing_object.getHeader())
-
-        publishing_object = pickle.dumps(client_publishing_object)
-        self.printwt("send publishing request to server")
-        self.sendToServer(publishing_object, 'publish')
-
-    # TODO 4.4 remove() - remove the files that a client has already published
-    def remove(self):
-        self.printwt("Select the files which you want to remove[Add File No. Seprated by ',']:")
-        count_remove = 1
-        for file in self.list_of_available_files:
-            self.printwt(str(count_remove) + ". " + file)
-            count_remove += 1
-        self.printwt("0. remove all files")
-        choice_to_remove = input(">>")
-        if choice_to_remove.isnumeric():
-            choice = int(choice_to_remove)
-            if choice != 0:
-                self.list_of_available_files = [self.list_of_files_to_remove[choice - 1]]
-        else:
-            choice = [int(x) for x in choice_to_remove.split(",")]
-            user_choices = []
-            for c in choice:
-                user_choices.append(self.list_of_files_to_remove[c - 1])
-            self.list_of_files_to_remove = user_choices
-        self.printwt("These Files will be published: " + str(self.list_of_files_to_remove))
-        self.printwt("attempt to remove a file from client's list at the server")
-
-        client_removing_object = remove.remove_req(self.name, self.host, self.UDP_port,
-                                                   self.list_of_files_to_remove)
-        self.printwt(client_removing_object.getHeader())
-
-        removing_object = pickle.dumps(client_removing_object)
-        self.printwt("send remove request to server")
-        self.sendToServer(removing_object, 'remove')
-
-    # 4.5 retrieveAll() - retrieve all the information from the server
-    def retrieveAll(self):
-        self.printwt('Attempting retrieving all information from the server...')
-
-        client_retrieve_all_object = retrieve_all.RetrieveAll(self.name, self.host, self.UDP_port)
-        print(client_retrieve_all_object.getHeader())
-
-        retrieve_object = pickle.dumps(client_retrieve_all_object)
-
-        self.printwt('Sending retrieving all request to server...')
-        self.sendToServer(retrieve_object, 'retrieve-all')
-
-    # TODO 4.6 retrieveInfoT() - retrieve info about a specific peer
-    def retrieveInfot(self, peer_name):
-        self.printwt('retrieving all files for specific client...')
-        client_retrieve_infot = \
-            retrieve_infot.RetrieveInfot(self.name, self.host, self.UDP_port, peer_name)
-        print(client_retrieve_infot.getHeader())
-
-        retrieve_infot_object = pickle.dumps(client_retrieve_infot)
-        self.printwt('Sending retrieving specific peer files request to server...')
-        self.sendToServer(retrieve_infot_object, 'retrieve-infot')
-
-    # TODO 4.7 searchFile() - check with Aida if that's what is required
-    def searchFile(self, filename):
-        self.printwt('searching specific file ...')
-        client_search_file = search_file.SearchFile(self.name, self.host, self.TCP_port, filename)
-        print(client_search_file.getHeader())
-
-        search_file_object = pickle.dumps(client_search_file)
-        self.printwt('Sending search specific file request to server...')
-        return self.sendToServer(search_file_object, 'search-file')
-
-    def get_file(file_name, search_path):
-        result = []
-        # Walking top-down from the root
-        for root, dir, files in os.walk(search_path):
-            if file_name in files:
-                result.append(os.path.join(root, file_name))
-            else:
-                print("File Not Found")
-        return result
-
-    def get_all_file(self):
-        """Get all files and make a list to process each files."""
-        files = []
-        os.chdir(self.DATA_FOLDER)
-        for file in glob.glob("*"):
-            files.append(file)
-        os.chdir("..")
-        return files
-
-    # TODO 4.8 download() -
 
     # 4.9 updateContact()  - client can update their client information
     def updateContact(self, ip_address, udp_socket, tcp_socket):
@@ -425,7 +425,6 @@ class Client:
         elif query == 'remove':
             client.remove()
 
-
         elif query == 'retrieveAll':
             client.retrieveAll()
         elif query == 'retrieveInfot':
@@ -447,7 +446,6 @@ class Client:
 
 
 def main():
-    # TODO Implement dynamic threaded user commands.
 
     query = input('> Enter Client Name: ')
     client = Client(query, socket.gethostbyname(socket.gethostname()), 0, 0)
