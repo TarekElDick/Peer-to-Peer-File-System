@@ -365,7 +365,8 @@ class serverMultiClient():
 
     def check_if_already_ack(self, client_request):
         for s_list in self.list_of_acknowledgements:
-            if s_list[0] == client_request.name and s_list[1] == client_request.rid:
+            print(s_list)
+            if s_list[0] == client_request.name and s_list[1] == client_request.rid and s_list[3][1] == client_request.host and s_list[3][2] == client_request.udp_socket:
                 print(client_request.getHeader())
                 self.printwt(f'Already received this request. Resending the reply : {client_request.name}')
                 self.sock.sendto(s_list[2].encode('utf-8'), s_list[3])

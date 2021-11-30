@@ -31,7 +31,8 @@ class Client:
         current_date_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
         print(f'[{current_date_time}] {msg}')
 
-    # 3. configure_client() - Creates a UDP socket that uses IPv4 and binds the client to a specific address for listening.
+    # 3. configure_client() - Creates a UDP socket that uses IPv4 and binds the client to a specific address for
+    # listening.
     def configure_client(self):
 
         # 3.1. Create the UDP socket with IPv4 Addressing
@@ -198,7 +199,7 @@ class Client:
     def get_file(file_name, search_path):
         result = []
         # Walking top-down from the root
-        for root, dir, files in os.walk(search_path):
+        for root, directory, files in os.walk(search_path):
             if file_name in files:
                 result.append(os.path.join(root, file_name))
             else:
