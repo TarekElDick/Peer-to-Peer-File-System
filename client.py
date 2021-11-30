@@ -350,15 +350,7 @@ class Client:
             try:
                 self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
-                # TODO: Hard coded for 'search-file'
-                if "SEARCH-" in msg_from_server.decode('utf-8'):
-                    msg = str(msg_from_server.decode('utf-8'))
-                    msg = msg.replace("[", "")
-                    msg = msg.replace("]", "")
-                    msg = [x.strip() for x in msg.split('|')]
-                    if msg[0] == "SEARCH-FILE" or msg [0] == "SEARCH-ERROR":
-                        return msg
-                # TODO: Hard Code ended ..
+
                 # once we sent the request, remove from the amount of trials if reply not received.
                 trials -= 1
                 if trials == 0:
@@ -375,6 +367,17 @@ class Client:
                 msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
                 self.printwt(f'Received {requestType} reply from server : {server_address}')
                 self.printwt(msg_from_server.decode())
+                # TODO: Hard coded for 'search-file'
+                print(msg_from_server)
+                if "SEARCH-" in msg_from_server.decode('utf-8'):
+                    msg = str(msg_from_server.decode('utf-8'))
+                    msg = msg.replace("[", "")
+                    msg = msg.replace("]", "")
+                    msg = [x.strip() for x in msg.split('|')]
+                    if msg[0] == "SEARCH-FILE" or msg[0] == "SEARCH-ERROR":
+                        return msg
+                # TODO: Hard Code ended ..
+
                 # if we received a reply, set the flag to false, so we don't try again
                 flag = False
             except socket.timeout:
