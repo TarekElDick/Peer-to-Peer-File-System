@@ -400,6 +400,7 @@ class serverMultiClient():
         print('1')
         time.sleep(1)
         print('bye!!!')
+        time.sleep(1)
         return 1
 
     # 3. wait_for_client() -Method to handle multiple clients by using an
