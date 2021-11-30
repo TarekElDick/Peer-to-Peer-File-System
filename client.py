@@ -8,6 +8,10 @@ from config import BUFFER_SIZE, UDP_TIMEOUT
 import threading
 from Client_Requests_Classes import register, unregister, update_contact, \
     retrieve_all, retrieve_infot, search_file, publish, remove
+from Client_Requests_Classes.download import Download
+from Client_Requests_Classes.file import File
+from config import BUFFER_SIZE, SERVER_ADDRESS, CHUNK_SIZE
+import threading
 
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
@@ -22,7 +26,10 @@ class Client:
         self.timeout = UDP_TIMEOUT
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = server_address
+        self.SERVER_ADDRESS = SERVER_ADDRESS
+        self.DATA_FOLDER = "./Data"
         self.list_of_available_files = self.get_all_file()
+        self.list_of_files_to_remove = self.get_all_file()
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -51,6 +58,10 @@ class Client:
         self.TCP_sock.bind((self.host, self.TCP_port))
         self.TCP_port = self.TCP_sock.getsockname()[1]
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
+        #  set time out for TCP socket and implement it.
+        t = threading.Thread(target=self.run_tcp_server, args=())
+        t.setDaemon(True)
+        t.start()
 
         # TODO figure out if below is necessary
         # threading.Thread(target=self.run_tcp_server(), args=()).start()
@@ -67,30 +78,31 @@ class Client:
         finally:
             self.TCP_sock.close()
 
-    def handle_tcp_client(self, conn, address):
-        print('New client from', address)
+    def handle_tcp_client(self, conn, addr):
+        print('New client from', addr)
         try:
-            while True:
-                data = conn.recv(1024)
-                if not data:
-                    break
-                conn.sendall("Hi Thank you! I am " + self.name)
-        finally:
-            conn.close()
+            obj = conn.recv(BUFFER_SIZE)
+            obj = pickle.loads(obj)
 
-    def sendToPeer(self, host, port):
-        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            conn.connect((host, port))
-            while True:
-                line = "Hi this " + self.name
-
-                request = line.encode("utf-8")
-                conn.sendall(request)
-                # MSG_WAITALL waits for full request or error
-                response = conn.recv(len(request), socket.MSG_WAITALL)
-                print("Replied: " + str(response.decode("utf-8")))
+            if isinstance(obj, Download):
+                if obj.file_name in self.list_of_available_files:
+                    #  Start sending the file
+                    chunks = self.get_file_as_chunks(obj.file_name)
+                    for i, chunk in enumerate(chunks):
+                        if i + 1 >= len(chunks):
+                            #  It's a last chunk
+                            chunk_obj = pickle.dumps(
+                                File(request_type="FILE-END", file_name=obj.file_name, chunk_id=i + 1, text=chunk))
+                        else:
+                            #  It's not a last chunk
+                            chunk_obj = pickle.dumps(
+                                File(request_type="FILE", file_name=obj.file_name, chunk_id=i + 1, text=chunk))
+                        conn.sendall(chunk_obj)
+                else:
+                    # File Doesn't exist, Send [DOWNLOAD-ERROR]
+                    conn.sendall(pickle.dumps(Download(request_type="DOWNLOAD-ERROR", reason="File Doesn't exist")))
         finally:
+            # Close the connection after sending the File
             conn.close()
 
     # 4. Interactions with the server
@@ -153,14 +165,35 @@ class Client:
         self.printwt("send publishing request to server")
         self.sendToServer(publishing_object, 'publish')
 
-    # 4.4 remove() - remove the files that a client has already published
+    #  4.4 remove() - remove the files that a client has already published
     def remove(self):
-        self.printwt("attempt to remove a file to client's list at the server")
-        client_remove_object = remove.remove_req(self.name, self.host, self.UDP_port, self.list_of_files_to_remove)
-        print(client_remove_object.getHeader())
-        remove_object = pickle.dumps(client_remove_object)
+        self.printwt("Select the files which you want to remove[Add File No. Seprated by ',']:")
+        count_remove = 1
+        for file in self.list_of_available_files:
+            self.printwt(str(count_remove) + ". " + file)
+            count_remove += 1
+        self.printwt("0. remove all files")
+        choice_to_remove = input(">>")
+        if choice_to_remove.isnumeric():
+            choice = int(choice_to_remove)
+            if choice != 0:
+                self.list_of_available_files = [self.list_of_files_to_remove[choice - 1]]
+        else:
+            choice = [int(x) for x in choice_to_remove.split(",")]
+            user_choices = []
+            for c in choice:
+                user_choices.append(self.list_of_files_to_remove[c - 1])
+            self.list_of_files_to_remove = user_choices
+        self.printwt("These Files will be published: " + str(self.list_of_files_to_remove))
+        self.printwt("attempt to remove a file from client's list at the server")
+
+        client_removing_object = remove.remove_req(self.name, self.host, self.UDP_port,
+                                                   self.list_of_files_to_remove)
+        self.printwt(client_removing_object.getHeader())
+
+        removing_object = pickle.dumps(client_removing_object)
         self.printwt("send remove request to server")
-        self.sendToServer(remove_object, 'remove')
+        self.sendToServer(removing_object, 'remove')
 
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
@@ -174,7 +207,7 @@ class Client:
         self.printwt('Sending retrieving all request to server...')
         self.sendToServer(retrieve_object, 'retrieve-all')
 
-    # 4.6 retrieveInfoT() - retrieve info about a specific peer
+    #  4.6 retrieveInfoT() - retrieve info about a specific peer
     def retrieveInfot(self, peer_name):
         self.printwt('retrieving all files for specific client...')
         client_retrieve_infot = \
@@ -185,45 +218,120 @@ class Client:
         self.printwt('Sending retrieving specific peer files request to server...')
         self.sendToServer(retrieve_infot_object, 'retrieve-infot')
 
-    # 4.7 searchFile() - check with Aida if that's what is required
+    #  4.7 searchFile() - check with Aida if that's what is required
     def searchFile(self, filename):
         self.printwt('searching specific file ...')
-        client_search_file = search_file.SearchFile(self.name, self.host, self.UDP_port, filename)
+        client_search_file = search_file.SearchFile(self.name, self.host, self.TCP_port, filename)
         print(client_search_file.getHeader())
 
         search_file_object = pickle.dumps(client_search_file)
         self.printwt('Sending search specific file request to server...')
-        self.sendToServer(search_file_object, 'search-file')
+        return self.sendToServer(search_file_object, 'search-file')
 
-    @staticmethod
     def get_file(file_name, search_path):
         result = []
         # Walking top-down from the root
-        for root, directory, files in os.walk(search_path):
+        for root, dir, files in os.walk(search_path):
             if file_name in files:
                 result.append(os.path.join(root, file_name))
             else:
                 print("File Not Found")
         return result
 
-    @staticmethod
-    def get_all_file(DATA_FOLDER="./Data"):
+    def get_all_file(self):
         """Get all files and make a list to process each files."""
         files = []
-        os.chdir(DATA_FOLDER)
+        os.chdir(self.DATA_FOLDER)
         for file in glob.glob("*"):
             files.append(file)
         os.chdir("..")
         return files
 
-    # TODO 4.8 download() -
+    # 4.8 download() -
+    def get_file_as_chunks(self, requested_file_name):
+        # open file and count the number of characters
+        self.printwt("Creating Chunks for: " + str(requested_file_name))
+        file_to_process = self.DATA_FOLDER + "/" + requested_file_name
+        with open(file_to_process, "r") as a_file:
+            data = a_file.read()
+            number_of_characters = len(data)
+            self.printwt('Number of characters in ' + str(requested_file_name) + ':' + str(number_of_characters))
+
+            if int(number_of_characters) < 1:
+                self.printwt("file is empty")
+            elif int(number_of_characters) > 1:
+                if int(number_of_characters) <= CHUNK_SIZE:
+                    self.printwt("file will be sent in 1 segment")
+                    return [data]
+                else:
+                    # chuck the file into segments each 200 char
+                    self.printwt("file will be fragmented")
+                    data = []
+                    with open(file_to_process) as f:
+                        while True:
+                            d = f.read(CHUNK_SIZE)
+                            if not d:
+                                break
+                            else:
+                                data.append(d)
+
+                    print(data)
+                    return data
+
+    def get_file_from_peer(self, host, port, file_name):
+        port = int(port)
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            conn.connect((host, port))
+            download_request = Download(request_type="DOWNLOAD", file_name=file_name)
+            self.printwt(download_request.getHeader())
+            download_request = pickle.dumps(download_request)
+            # Send Download Request
+            conn.sendall(download_request)
+            # Get Response
+            obj = conn.recv(BUFFER_SIZE)
+            obj = pickle.loads(obj)
+
+            if isinstance(obj, Download):
+                # DOWNLOAD-ERROR
+                self.printwt(obj.getHeader())
+            elif isinstance(obj, File):
+                data = []
+                self.printwt(obj.getHeader())
+                data.append(obj.text)
+                while True:
+                    # Get Response
+                    obj = conn.recv(BUFFER_SIZE)
+
+                    if obj == b'':
+                        break
+
+                    obj = pickle.loads(obj)
+                    # Check the chunk type
+                    if isinstance(obj, File) and obj.request_type == "FILE":
+                        self.printwt(obj.getHeader())
+                        data.append(obj.text)
+                        continue
+                    elif isinstance(obj, File) and obj.request_type == "FILE-END":
+                        self.printwt(obj.getHeader())
+                        data.append(obj.text)
+                        break
+
+                self.printwt(file_name + " is successfully retrieved")
+                with open(self.DATA_FOLDER + "/new_" + file_name, "w") as f:
+                    f.write(''.join(data))
+                self.printwt(file_name + " is successfully created in Data Folder")
+
+        finally:
+            conn.close()
+            self.printwt("Closing the connection with " + str(host) + ":" + str(port))
 
     # 4.9 updateContact()  - client can update their client information
-    def updateContact(self, ip_address, udp_port, tcp_port):
+    def updateContact(self, ip_address, udp_socket, tcp_socket):
         # must update this clients sockets also
         self.host = ip_address
-        self.UDP_port = udp_port
-        self.TCP_port = tcp_port
+        self.UDP_port = udp_socket
+        self.TCP_port = tcp_socket
 
         # close the old sockets and create and bind the new ones and update the binding
         self.printwt('Closing old sockets and rebinding the new ones...')
@@ -261,6 +369,7 @@ class Client:
             try:
                 self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
+
                 # once we sent the request, remove from the amount of trials if reply not received.
                 trials -= 1
                 if trials == 0:
@@ -271,18 +380,28 @@ class Client:
             except socket.error:
                 # if sending failed
                 self.printwt('Failed to send ' + requestType + ' request to server')
+
             # try to receive a reply from the server.
             try:
                 msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
                 self.printwt(f'Received {requestType} reply from server : {server_address}')
                 self.printwt(msg_from_server.decode())
+                # TODO: Hard coded for 'search-file'
+                print(msg_from_server)
+                if "SEARCH-" in msg_from_server.decode('utf-8'):
+                    msg = str(msg_from_server.decode('utf-8'))
+                    msg = msg.replace("[", "")
+                    msg = msg.replace("]", "")
+                    msg = [x.strip() for x in msg.split('|')]
+                    if msg[0] == "SEARCH-FILE" or msg[0] == "SEARCH-ERROR":
+                        return msg
+                # TODO: Hard Code ended ..
+
                 # if we received a reply, set the flag to false, so we don't try again
                 flag = False
             except socket.timeout:
                 self.printwt(
                     'Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
-            except ConnectionResetError:
-                self.printwt('Server is not responding: Server might be down')
 
     def close_sockets(self):
         self.printwt('Closing sockets...')
@@ -293,21 +412,37 @@ class Client:
     @staticmethod
     def handle_commands(client, query):
         if query == '?' or query == 'help':
+
             print('<register> <unregister> <publish> <retrieveAll> <retrieveInfot> <searchFile> <updateContact>')
+
         elif query == 'register':
             client.register()
         elif query == 'unregister':
             client.unregister()
         elif query == 'publish':
             client.publish()
+        elif query == 'remove':
+            client.remove()
+
         elif query == 'retrieveAll':
             client.retrieveAll()
         elif query == 'retrieveInfot':
-            peer_name = input('enter specific client name: ')
+            peer_name = input('> Enter specific client name: ')
             client.retrieveInfot(peer_name)
         elif query == 'searchFile':
-            filename = input('enter file name to search: ')
+            filename = input('> Enter file name to search: ')
             client.searchFile(filename)
+        elif query == 'updateContact':
+            newip = input('> Enter new ip address: ')
+        elif query == 'download':
+            filename = input('> Enter file name to search: ')
+            response = client.searchFile(filename)
+            if response[0] == "SEARCH-FILE":
+                self.get_file_from_peer(host=response[3], port=response[4], file_name=filename)
+            elif response[0] == "SEARCH-ERROR":
+                pass
+                #  Add Reason from response
+
         elif query == 'updateContact':
             newIP = input('enter new ip address: ')
             newUDPPort = input('enter new UDP port: ')
