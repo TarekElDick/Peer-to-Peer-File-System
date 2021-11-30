@@ -280,6 +280,8 @@ class Client:
             except socket.timeout:
                 self.printwt(
                     'Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
+            except ConnectionResetError:
+                self.printwt('Server is not responding: Server might be down')
 
     def close_sockets(self):
         self.printwt('Closing sockets...')
