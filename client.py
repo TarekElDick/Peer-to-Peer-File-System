@@ -1,21 +1,24 @@
 # 0. Import the socket and datetime module
 import glob
 import socket
-import threading
 
 from Client_Requests_Classes import register, unregister, update_contact, \
     retrieve_all, retrieve_infot, search_file, publish, remove
+
 import os
 import pickle
 from datetime import datetime
-from config import BUFFER_SIZE, SERVER_ADDRESS
+
+from Client_Requests_Classes.download import Download
+from Client_Requests_Classes.file import File
+from config import BUFFER_SIZE, SERVER_ADDRESS, CHUNK_SIZE
 import threading
 
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
 class Client:
     def __init__(self, name, host, UDP_port, TCP_port):
-        self.list_of_files = None
+        # self.list_of_files = None
         self.name = name  # Host name
         self.peer_name = None
         self.host = host  # Host Address
@@ -26,9 +29,10 @@ class Client:
         self.timeout = 5
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = SERVER_ADDRESS
+        self.DATA_FOLDER = "./Data"
         self.list_of_available_files = self.get_all_file()
 
-        #self.file_name = file_name
+        # self.file_name = file_name
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -57,7 +61,9 @@ class Client:
         self.TCP_port = self.TCP_sock.getsockname()[1]
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
         # TODO set time out for TCP socket and implement it.
-        threading.Thread(target=self.run_tcp_server(), args=()).start()
+        t = threading.Thread(target=self.run_tcp_server, args=())
+        t.setDaemon(True)
+        t.start()
 
     def run_tcp_server(self):
         try:
@@ -65,7 +71,7 @@ class Client:
             self.TCP_sock.listen(5)
             while True:
                 conn, addr = self.TCP_sock.accept()
-                tcp_thread = threading.Thread(target=self.handle_client, args=(conn, addr))
+                tcp_thread = threading.Thread(target=self.handle_tcp_client, args=(conn, addr))
                 tcp_thread.start()
                 tcp_thread.join()
         finally:
@@ -74,29 +80,108 @@ class Client:
     def handle_tcp_client(self, conn, addr):
         print('New client from', addr)
         try:
-            while True:
-                data = conn.recv(1024)
-                if not data:
-                    break
-                conn.sendall("Hi Thank you! I am " + self.name)
+            obj = conn.recv(BUFFER_SIZE)
+            obj = pickle.loads(obj)
+
+            if isinstance(obj, Download):
+                if obj.file_name in self.list_of_available_files:
+                    # TODO: Start sending the file
+                    chunks = self.get_file_as_chunks(obj.file_name)
+                    for i, chunk in enumerate(chunks):
+                        if i + 1 >= len(chunks):
+                            # TODO: It's a last chunk
+                            chunk_obj = pickle.dumps(
+                                File(request_type="FILE-END", file_name=obj.file_name, chunk_id=i + 1, text=chunk))
+                        else:
+                            # TODO: It's not a last chunk
+                            chunk_obj = pickle.dumps(
+                                File(request_type="FILE", file_name=obj.file_name, chunk_id=i + 1, text=chunk))
+                        conn.sendall(chunk_obj)
+                else:
+                    # TODO: File Doesn't exist, Send [DOWNLOAD-ERROR]
+                    conn.sendall(pickle.dumps(Download(request_type="DOWNLOAD-ERROR",reason="File Doesn't exist")))
+
         finally:
+            # Close the connection after sending the File
             conn.close()
 
-    def sendToPeer(self, host, port):
+    def get_file_as_chunks(self, requested_file_name):
+        # open file and count the number of characters
+        self.printwt("Creating Chunks for: " + str(requested_file_name))
+        file_to_process = self.DATA_FOLDER +"/" + requested_file_name
+        with open(file_to_process, "r") as a_file:
+            data = a_file.read()
+            number_of_characters = len(data)
+            self.printwt('Number of characters in ' + str(requested_file_name) + ':' + str(number_of_characters))
+
+            if int(number_of_characters) < 1:
+                self.printwt("file is empty")
+            elif int(number_of_characters) > 1:
+                if int(number_of_characters) <= CHUNK_SIZE:
+                    self.printwt("file will be sent in 1 segment")
+                    return [data]
+                else:
+                    # chuck the file into segments each 200 char
+                    self.printwt("file will be fragmented")
+                    data = []
+                    with open(file_to_process) as f:
+                        while True:
+                            d = f.read(CHUNK_SIZE)
+                            if not d:
+                                break
+                            else:
+                                data.append(d)
+
+                    print(data)
+                    return data
+
+    def get_file_from_peer(self, host, port, file_name):
+        port = int(port)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             conn.connect((host, port))
-            while True:
-                line = "Hi this " + self.name
+            download_request = Download(request_type="DOWNLOAD",file_name=file_name)
+            self.printwt(download_request.getHeader())
+            download_request = pickle.dumps(download_request)
+            # Send Download Request
+            conn.sendall(download_request)
+            # Get Response
+            obj = conn.recv(BUFFER_SIZE)
+            obj = pickle.loads(obj)
 
-                request = line.encode("utf-8")
-                conn.sendall(request)
-                # MSG_WAITALL waits for full request or error
-                response = conn.recv(len(request), socket.MSG_WAITALL)
-                print("Replied: " + str(response.decode("utf-8")))
+            if isinstance(obj, Download):
+                # DOWNLOAD-ERROR
+                self.printwt(obj.getHeader())
+            elif isinstance(obj, File):
+                data = []
+                self.printwt(obj.getHeader())
+                data.append(obj.text)
+                while True:
+                    # Get Response
+                    obj = conn.recv(BUFFER_SIZE)
+
+                    if obj == b'':
+                        break
+
+                    obj = pickle.loads(obj)
+                    # Check the chunk type
+                    if isinstance(obj, File) and obj.request_type == "FILE":
+                        self.printwt(obj.getHeader())
+                        data.append(obj.text)
+                        continue
+                    elif isinstance(obj, File) and obj.request_type == "FILE-END":
+                        self.printwt(obj.getHeader())
+                        data.append(obj.text)
+                        break
+
+                self.printwt(file_name + " is successfully retrieved")
+                with open(self.DATA_FOLDER + "/new_"+file_name, "w") as f:
+                    f.write(''.join(data))
+                self.printwt(file_name + " is successfully created in Data Folder")
+
         finally:
             conn.close()
-
+            self.printwt("Closing the connection with " + str(host) + ":" + str(port))
 
     # 4. Interactions with the server
     # 4.1. register() - registers the client with the server.
@@ -133,27 +218,27 @@ class Client:
         self.printwt("Select the files which you want to publish[Add File No. Seprated by ',']:")
         count = 1
         for file in self.list_of_available_files:
-            self.printwt(str(count)+". "+file)
+            self.printwt(str(count) + ". " + file)
             count += 1
         self.printwt("0. Add all files")
         choice = input(">>")
         if choice.isnumeric():
             choice = int(choice)
             if choice != 0:
-                self.list_of_available_files = [ self.list_of_available_files[choice-1]]
+                self.list_of_available_files = [self.list_of_available_files[choice - 1]]
         else:
             choice = [int(x) for x in choice.split(",")]
             user_choices = []
             for c in choice:
-                user_choices.append(self.list_of_available_files[c-1])
+                user_choices.append(self.list_of_available_files[c - 1])
             self.list_of_available_files = user_choices
-        self.printwt("These Files will be published: "+ str(self.list_of_available_files))
+        self.printwt("These Files will be published: " + str(self.list_of_available_files))
         self.printwt("attempt to add a file to client's list at the server")
 
-        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port, self.list_of_available_files)
+        client_publishing_object = publish.publish_req(self.name, self.host, self.UDP_port,
+                                                       self.list_of_available_files)
         self.printwt(client_publishing_object.getHeader())
 
-    
         publishing_object = pickle.dumps(client_publishing_object)
         self.printwt("send publishing request to server")
         self.sendToServer(publishing_object, 'publish')
@@ -193,12 +278,13 @@ class Client:
     # TODO 4.7 searchFile() - check with Aida if that's what is required
     def searchFile(self, filename):
         self.printwt('searching specific file ...')
-        client_search_file = search_file.SearchFile(self.name, self.host, self.UDP_port, filename)
+        client_search_file = search_file.SearchFile(self.name, self.host, self.TCP_port, filename)
         print(client_search_file.getHeader())
 
         search_file_object = pickle.dumps(client_search_file)
         self.printwt('Sending search specific file request to server...')
-        self.sendToServer(search_file_object, 'search-file')
+        return self.sendToServer(search_file_object, 'search-file')
+
 
     def get_file(file_name, search_path):
         result = []
@@ -210,10 +296,10 @@ class Client:
                 print("File Not Found")
         return result
 
-    def get_all_file(self, DATA_FOLDER="./Data"):
+    def get_all_file(self):
         """Get all files and make a list to process each files."""
         files = []
-        os.chdir(DATA_FOLDER)
+        os.chdir(self.DATA_FOLDER)
         for file in glob.glob("*"):
             files.append(file)
         os.chdir("..")
@@ -269,6 +355,15 @@ class Client:
                 msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
                 self.printwt(f'Received {requestType} reply from server : {server_address}')
                 self.printwt(msg_from_server.decode())
+                # TODO: Hard coded for 'search-file'
+                if "SEARCH-" in msg_from_server.decode('utf-8'):
+                    msg = str(msg_from_server.decode('utf-8'))
+                    msg = msg.replace("[", "")
+                    msg = msg.replace("]", "")
+                    msg = [x.strip() for x in msg.split('|')]
+                    if msg[0] == "SEARCH-FILE" or msg [0] == "SEARCH-ERROR":
+                        return msg
+                # TODO: Hard Code ended ..
                 # if we received a reply, set the flag to false, so we don't try again
                 flag = False
 
@@ -303,7 +398,6 @@ class Client:
     def handle_commands(self, client, query):
         if query == '?' or query == 'help':
 
-          
             print('<register> <unregister> <publish> <retrieveAll> <retrieveInfot> <searchFile> <updateContact>')
 
         elif query == 'register':
@@ -317,16 +411,23 @@ class Client:
         elif query == 'retrieveAll':
             client.retrieveAll()
         elif query == 'retrieveInfot':
-            peer_name = input('enter specific client name: ')
+            peer_name = input('> Enter specific client name: ')
             client.retrieveInfot(peer_name)
         elif query == 'searchFile':
-            filename = input('enter file name to search: ')
+            filename = input('> Enter file name to search: ')
             client.searchFile(filename)
-
         elif query == 'updateContact':
-            newip = input('enter new ip address: ')
-            pass
-
+            newip = input('> Enter new ip address: ')
+        elif query == 'download':
+            client.register()
+            client.publish()
+            filename = input('> Enter file name to search: ')
+            response = client.searchFile(filename)
+            if response[0] == "SEARCH-FILE":
+                self.get_file_from_peer(host=response[3],port=response[4] ,file_name=filename)
+            elif response[0] == "SEARCH-ERROR":
+                pass
+                # TODO: Add Reason from response
 
 
 def main():
