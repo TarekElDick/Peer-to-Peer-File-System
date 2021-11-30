@@ -345,16 +345,11 @@ class Client:
     def sendToServer(self, command_object, requestType):
         flag = True
         trials = 5
-        # Create a dedicated UDP port to send data to the server. 1 port that sends, and another that receives.
         while flag:
             # try to send the command and receive a reply from the server
             try:
                 self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
-                # try to receive a reply from the server.
-                msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
-                self.printwt(f'Received {requestType} reply from server : {server_address}')
-                self.printwt(msg_from_server.decode())
                 # TODO: Hard coded for 'search-file'
                 if "SEARCH-" in msg_from_server.decode('utf-8'):
                     msg = str(msg_from_server.decode('utf-8'))
@@ -364,9 +359,6 @@ class Client:
                     if msg[0] == "SEARCH-FILE" or msg [0] == "SEARCH-ERROR":
                         return msg
                 # TODO: Hard Code ended ..
-                # if we received a reply, set the flag to false, so we don't try again
-                flag = False
-
                 # once we sent the request, remove from the amount of trials if reply not received.
                 trials -= 1
                 if trials == 0:
@@ -419,8 +411,8 @@ class Client:
         elif query == 'updateContact':
             newip = input('> Enter new ip address: ')
         elif query == 'download':
-            client.register()
-            client.publish()
+           # client.register()
+          #  client.publish()
             filename = input('> Enter file name to search: ')
             response = client.searchFile(filename)
             if response[0] == "SEARCH-FILE":
