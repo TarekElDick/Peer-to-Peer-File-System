@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="ad24b281-0700-4e7d-8417-eaf7576557ec" name="Changes" comment="remove , choice" />
+    <list default="true" id="ad24b281-0700-4e7d-8417-eaf7576557ec" name="Changes" comment="final changes" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -200,7 +200,7 @@
       <workItem from="1637975979328" duration="66000" />
       <workItem from="1637978655174" duration="2829000" />
       <workItem from="1638133065479" duration="4898000" />
-      <workItem from="1638230515009" duration="5103000" />
+      <workItem from="1638230515009" duration="5526000" />
     </task>
     <task id="LOCAL-00001" summary="punlishing class &amp; upload method">
       <created>1637088899701</created>
@@ -489,7 +489,14 @@
       <option name="project" value="LOCAL" />
       <updated>1638235776903</updated>
     </task>
-    <option name="localTasksCounter" value="42" />
+    <task id="LOCAL-00042" summary="final changes">
+      <created>1638236760289</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1638236760289</updated>
+    </task>
+    <option name="localTasksCounter" value="43" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -509,7 +516,6 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-    <MESSAGE value="fix minor errors" />
     <MESSAGE value="publish denied" />
     <MESSAGE value="remove" />
     <MESSAGE value="removed" />
@@ -534,7 +540,8 @@
     <MESSAGE value="tcp server + client" />
     <MESSAGE value="tcp final" />
     <MESSAGE value="remove , choice" />
-    <option name="LAST_COMMIT_MESSAGE" value="remove , choice" />
+    <MESSAGE value="final changes" />
+    <option name="LAST_COMMIT_MESSAGE" value="final changes" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Peer_to_Peer_File_System$.coverage" NAME=" Coverage Results" MODIFIED="1637119577331" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
