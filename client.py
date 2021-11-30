@@ -199,7 +199,7 @@ class Client:
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
         self.printwt('Attempting retrieving all information from the server...')
-
+##
         client_retrieve_all_object = retrieve_all.RetrieveAll(self.name, self.host, self.UDP_port)
         print(client_retrieve_all_object.getHeader())
 
