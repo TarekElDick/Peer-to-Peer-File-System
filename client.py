@@ -30,6 +30,7 @@ class Client:
         self.DATA_FOLDER = "./Data"
         self.list_of_available_files = self.get_all_file()
         self.list_of_files_to_remove = self.get_all_file()
+        self.Lock = None  # Lock for user input
 
     # 2. printwt() - messages are printed with a timestamp before them. Timestamp is in this format 'YY-mm-dd
     # HH:MM:SS:' <message>.
@@ -63,15 +64,15 @@ class Client:
         t.setDaemon(True)
         t.start()
 
-        # TODO figure out if below is necessary
-        # threading.Thread(target=self.run_tcp_server(), args=()).start()
-
     def run_tcp_server(self):
         try:
             # 5 is MAX Client
-            self.TCP_sock.listen(5)
+            self.TCP_sock.listen(5)  # TODO add to config
             while True:
-                conn, address = self.TCP_sock.accept()
+                try:
+                    conn, address = self.TCP_sock.accept()
+                except OSError:
+                    return
                 tcp_thread = threading.Thread(target=self.handle_tcp_client, args=(conn, address))
                 tcp_thread.start()
                 tcp_thread.join()
@@ -148,7 +149,8 @@ class Client:
             choice = int(choice)
             if choice != 0:
                 self.list_of_available_files = [self.list_of_available_files[choice - 1]]
-                #hh
+                # hh
+
         else:
             choice = [int(x) for x in choice.split(",")]
             user_choices = []
@@ -168,7 +170,7 @@ class Client:
 
     #  4.4 remove() - remove the files that a client has already published
     def remove(self):
-        self.printwt("Select the files which you want to remove[Add File No. Seprated by ',']:")
+        self.printwt("Select the files which you want to remove[Add File No. Separated by ',']:")
         count_remove = 1
         for file in self.list_of_files_to_remove:
             self.printwt(str(count_remove) + ". " + file)
@@ -180,10 +182,10 @@ class Client:
             if choice_to_remove != 0:
                 self.list_of_files_to_remove = [self.list_of_files_to_remove[choice_to_remove - 1]]
         else:
-            choice = [int(x) for x in choice_to_remove.split(",")]
+            # choice = [int(x) for x in choice_to_remove.split(",")]
             user_choices = []
-            for c in choice_to_remove:
-                user_choices.append(self.list_of_files_to_remove[c - 1])
+            for choices in choice_to_remove:
+                user_choices.append(self.list_of_files_to_remove[choices - 1])
             self.list_of_files_to_remove = user_choices
         self.printwt("These Files will be removed: " + str(self.list_of_files_to_remove))
         self.printwt("attempt to remove a file from client's list at the server")
@@ -199,7 +201,7 @@ class Client:
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
         self.printwt('Attempting retrieving all information from the server...')
-##
+        ##
         client_retrieve_all_object = retrieve_all.RetrieveAll(self.name, self.host, self.UDP_port)
         print(client_retrieve_all_object.getHeader())
 
@@ -229,12 +231,13 @@ class Client:
         self.printwt('Sending search specific file request to server...')
         return self.sendToServer(search_file_object, 'search-file')
 
-    def get_file(file_name, search_path):
+    @staticmethod
+    def get_file(fileName, search_path):
         result = []
         # Walking top-down from the root
-        for root, dir, files in os.walk(search_path):
-            if file_name in files:
-                result.append(os.path.join(root, file_name))
+        for root, DIR, files in os.walk(search_path):
+            if fileName in files:
+                result.append(os.path.join(root, fileName))
             else:
                 print("File Not Found")
         return result
@@ -348,7 +351,9 @@ class Client:
         self.TCP_sock.bind((self.host, self.TCP_port))
         self.TCP_port = self.TCP_sock.getsockname()[1]
         self.printwt(f'Bound TCP client socket {self.host}: {self.TCP_port}')
-
+        t = threading.Thread(target=self.run_tcp_server, args=())
+        t.setDaemon(True)
+        t.start()
         self.printwt('Attempting to update contact with the server...')
 
         # Create the updateContact object
@@ -386,8 +391,9 @@ class Client:
             try:
                 msg_from_server, server_address = self.UDP_sock.recvfrom(self.BUFFER_SIZE)
                 self.printwt(f'Received {requestType} reply from server : {server_address}')
-                self.printwt(msg_from_server.decode())
-                # TODO: Hard coded for 'search-file'
+                print('\n' + msg_from_server.decode() + '\n')
+
+                # Coded for 'search-file' ----------------------------
                 if "SEARCH-" in msg_from_server.decode('utf-8'):
                     msg = str(msg_from_server.decode('utf-8'))
                     msg = msg.replace("[", "")
@@ -395,8 +401,7 @@ class Client:
                     msg = [x.strip() for x in msg.split('|')]
                     if msg[0] == "SEARCH-FILE" or msg[0] == "SEARCH-ERROR":
                         return msg
-                # TODO: Hard Code ended ..
-
+                # ---------------------------------------------------------
                 # if we received a reply, set the flag to false, so we don't try again
                 flag = False
             except socket.timeout:
@@ -411,10 +416,10 @@ class Client:
 
     @staticmethod
     def handle_commands(client, query):
+        client.try_acquireLock()
         if query == '?' or query == 'help':
-
-            print('<register> <unregister> <publish> <retrieveAll> <retrieveInfot> <searchFile> <updateContact>')
-
+            print(
+                '<register> <unregister> <publish> <remove> <retrieveAll> <retrieveInfot> <searchFile> <updateContact> <download>')
         elif query == 'register':
             client.register()
         elif query == 'unregister':
@@ -433,8 +438,8 @@ class Client:
             client.searchFile(filename)
         elif query == 'updateContact':
             newIp = input('> Enter new ip address: ')
-            newUDPPort = input('> Enter new UDP port: ')
-            newTCPPort = input('> Enter new TCP port: ')
+            newUDPPort = int(input('> Enter new UDP port: '))
+            newTCPPort = int(input('> Enter new TCP port: '))
             client.updateContact(newIp, newUDPPort, newTCPPort)
         elif query == 'download':
             filename = input('> Enter file name to search: ')
@@ -444,6 +449,22 @@ class Client:
             elif response[0] == "SEARCH-ERROR":
                 pass
                 #  Add Reason from response
+        else:
+            print(query)
+        client.releaseLock()
+
+    def try_acquireLock(self):
+        # if lock is free take it and leave
+        if self.Lock != 1:
+            self.Lock = 1
+            return
+        while self.Lock == 1:
+            if self.Lock != 1:
+                self.Lock = 1
+                return
+
+    def releaseLock(self):
+        self.Lock = 0
 
 
 def main():
@@ -457,7 +478,14 @@ def main():
         print('type [help] or [?] for a list of commands at any time.')
         print('type [exit] to exit, or terminate the client')
         while query != 'exit':
-            query = input('')
+
+            client.try_acquireLock()
+            query = input('Query: ')
+            client.releaseLock()
+
+            if query == 'exit':
+                client.close_sockets()
+                break
 
             client_thread = threading.Thread(target=client.handle_commands, args=(client, query))
             client_thread.daemon = True

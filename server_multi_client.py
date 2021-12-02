@@ -13,11 +13,11 @@ from Client_Requests_Classes.remove import remove_req
 from Client_Requests_Classes.retrieve_all import RetrieveAll
 from Client_Requests_Classes.retrieve_infot import RetrieveInfot
 from Client_Requests_Classes.search_file import SearchFile
-from Client_Requests_Classes.download import Download
+
 
 # 1. init() - call the base class (server) constructor to initialize host address and port. Use a lock to make sure
 # only one thread uses the sendto() method at a time
-class serverMultiClient():
+class serverMultiClient:
 
     def __init__(self, host, port):
         self.host = host  # Host Address
@@ -43,7 +43,6 @@ class serverMultiClient():
 
         self.printwt(f'Received request from client {client_address}')
         client_request = pickle.loads(client_data)
-        self.printwt(client_request)
 
         # Find out what kind of object it is and send it to the designated function
         if self.check_if_already_ack(client_request):
@@ -74,7 +73,7 @@ class serverMultiClient():
             self.list_of_client_files = pickle.load(open('server_saved_data/clientFiles.p', 'rb'))
             self.list_of_registered_clients = pickle.load(open('server_saved_data/registeredClients.p', 'rb'))
             self.list_of_acknowledgements = pickle.load(open('server_saved_data/acknowledgements.p', 'rb'))
-        except (OSError, IOError, EOFError) as e:
+        except (OSError, IOError, EOFError):
             self.printwt('No saved database, creating database')
 
         # 3.1. Create the UDP socket with IPv4 Addressing
@@ -120,7 +119,7 @@ class serverMultiClient():
             client_address = self.get_client_udp_address(de_request)
             # if the client is registered then unregister them
             for obj in self.list_of_registered_clients:
-                if isinstance(obj,Register):
+                if isinstance(obj, Register):
                     if obj.name == de_request.name:
                         # delete the client from the database/list
                         self.list_of_registered_clients.remove(obj)
@@ -137,7 +136,7 @@ class serverMultiClient():
 
     def try_updatingContact(self, up_request):
         print(up_request.getHeader())
-        client_address = self.get_client_udp_address(up_request)
+
         if self.check_if_client(up_request):
             # if the client is registered then we can update the register object
             for obj in self.list_of_registered_clients:
@@ -150,8 +149,9 @@ class serverMultiClient():
                         msg_to_client = '[UPDATE-CONFIRMED' + ' | ' + str(up_request.rid) + ' | ' + str(
                             up_request.name) + ' | ' + str(up_request.host) + ' | ' + str(
                             up_request.udp_socket) + ' | ' + str(up_request.tcp_socket) + ']'
-                        self.printwt(msg_to_client)
 
+                        self.printwt(msg_to_client)
+                        client_address = self.get_client_udp_address(up_request)
                         array_to_append = [up_request.name, up_request.rid, msg_to_client, client_address]
                         self.list_of_acknowledgements.append(array_to_append)
 
@@ -161,7 +161,7 @@ class serverMultiClient():
             msg_to_client = '[UPDATE-DENIED' + ' | ' + str(up_request.rid) + ' | ' + str(
                 up_request.name) + ' | ' + 'Name does not Exist]'
             self.printwt(msg_to_client)
-
+            client_address = self.get_client_udp_address(up_request)
             array_to_append = [up_request.name, up_request.rid, msg_to_client, client_address]
             self.list_of_acknowledgements.append(array_to_append)
 
@@ -198,15 +198,18 @@ class serverMultiClient():
         if self.check_if_client(rf_request):
             # if the file is at the list remove it
             found = False
+            msg_to_client = ' '
             for obj in self.list_of_client_files:
                 if obj.name == rf_request.name:
                     found = True
                     # delete the file from the database/list
                     failed_file = []
                     for file in rf_request.list_of_files_to_remove:
+
                         try:
                             obj.list_of_available_files.remove(file)
-                        except:
+
+                        except OSError:
                             failed_file.append(file)
 
                     if len(failed_file) == 1:
@@ -230,13 +233,9 @@ class serverMultiClient():
         self.list_of_acknowledgements.append(array_to_append)
         self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
 
-
     def try_retrieve_all(self, up_request, client_address):
-        list_of_files = " "
-        msg_to_client = "RETRIEVE-ALL  |  " + str(up_request.rid) + "["
+        msg_to_client = "RETRIEVE-ALL | " + str(up_request.rid)
         registered = False
-        j = 0
-        self.printwt("hhhhhhhhhhhhhhhhhh****************")
 
         if self.check_if_client(up_request):
 
@@ -248,25 +247,22 @@ class serverMultiClient():
                 if i == len(self.list_of_client_files):
                     break
 
-                clientname = self.list_of_client_files[i].name
+                clientName = self.list_of_client_files[i].name
                 for obj in self.list_of_registered_clients:
 
-                    if obj.name == clientname:
-                        # self.printwt("retrieveall    1111111  ")
+                    if obj.name == clientName:
                         ipaddr = obj.host
-                        tcpport = obj.tcp_socket
+                        TCPPort = obj.tcp_socket
                         list_of_files = " "
 
                         for files in range(len(self.list_of_client_files[i].list_of_available_files)):
                             #  self.printwt(self.list_of_client_files[i].list_of_available_files[files])
-                            list_of_files = (list_of_files + " , " + \
-                                             self.list_of_client_files[i].list_of_available_files[files])
+                            list_of_files = (
+                                    list_of_files + " , " + self.list_of_client_files[i].list_of_available_files[files])
 
                         else:
 
-                            msg_to_client = (msg_to_client + '|' + \
-                                             (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
-                                             list_of_files + ']')
+                            msg_to_client = (msg_to_client + ' | ' + clientName + ' | ' + str(ipaddr) + ' | ' + str(TCPPort) + ' | ' + list_of_files + ']')
         if registered:
             self.printwt("end of client lists")
             self.printwt(msg_to_client)
@@ -274,17 +270,15 @@ class serverMultiClient():
             return
 
         else:
-            msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(up_request.rid) + ' | ' + 'non-registered user]'
+            msg_to_client = '[RETRIEVE-ERROR' + ' | ' + str(
+                up_request.rid) + ' | ' + 'non-registered user or no files found]'
             self.printwt(msg_to_client)
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
             return
 
     def try_retrieveInfot(self, up_request, client_address):
-        list_of_files = " "
         msg_to_client = "RETRIEVE-INFOT  |  " + str(up_request.rid) + "["
         infot = False
-
-        j = 0
 
         if self.check_if_client(up_request):
             for i in range(len(self.list_of_client_files)):
@@ -294,20 +288,19 @@ class serverMultiClient():
                     if i == len(self.list_of_client_files):
                         self.printwt("client name not found in registered clients list")
                         break
-                    clientname = self.list_of_client_files[i].name
+                    clientName = self.list_of_client_files[i].name
                     for obj1 in self.list_of_registered_clients:
-                        if obj1.name == clientname:
+                        if obj1.name == clientName:
                             ipaddr = obj1.host
-                            tcpport = obj1.tcp_socket
+                            TCPPort = obj1.tcp_socket
 
                             list_of_files = " "
                             for files in range(len(self.list_of_client_files[i].list_of_available_files)):
-                                list_of_files = (list_of_files + " , " + \
+                                list_of_files = (list_of_files + " , " +
                                                  self.list_of_client_files[i].list_of_available_files[files])
                             else:
-                                msg_to_client = (msg_to_client + '|' + \
-                                                 (clientname) + ' | ' + str(ipaddr) + ' | ' + str(tcpport) + '|' + \
-                                                 list_of_files + ']')
+                                msg_to_client = (msg_to_client + '|' + clientName + ' | ' + str(ipaddr) + ' | ' + str(
+                                    TCPPort) + '|' + list_of_files + ']')
                                 break
 
         if infot:
@@ -323,9 +316,7 @@ class serverMultiClient():
             return
 
     def try_searchFile(self, up_request, client_address):
-        list_of_files = " "
         msg_to_client = "[ SEARCH-FILE  |  " + str(up_request.rid)
-        j = 0
         searchFound = False
 
         # if the client is registered accept the request
@@ -339,13 +330,13 @@ class serverMultiClient():
                 for files in range(len(self.list_of_client_files[i].list_of_available_files)):
                     if self.list_of_client_files[i].list_of_available_files[files] == up_request.filename:
                         searchFound = True
-                        clientname = self.list_of_client_files[i].name
+                        clientName = self.list_of_client_files[i].name
                         for obj1 in self.list_of_registered_clients:
-                            if obj1.name == clientname:
+                            if obj1.name == clientName:
                                 ipaddr = obj1.host
-                                tcpport = obj1.tcp_socket
-                                msg_to_client = (msg_to_client + '|' + (clientname) + ' | ' + str(ipaddr) + ' | ' + str(
-                                    tcpport) + '|' + ']')
+                                TCPPort = obj1.tcp_socket
+                                msg_to_client = (msg_to_client + ' | ' + clientName + ' | ' + str(ipaddr) + ' | ' + str(
+                                    TCPPort) + '|' + ']')
                                 self.printwt(msg_to_client)
 
         if searchFound:
@@ -371,9 +362,7 @@ class serverMultiClient():
 
     def check_if_already_ack(self, client_request):
         for s_list in self.list_of_acknowledgements:
-            print(s_list)
-            if s_list[0] == client_request.name and s_list[1] == client_request.rid and s_list[3][
-                1] == client_request.host and s_list[3][2] == client_request.udp_socket:
+            if s_list[0] == client_request.name and s_list[1] == client_request.rid and s_list[3][1] == client_request.host and s_list[3][2] == client_request.udp_socket:
                 print(client_request.getHeader())
                 self.printwt(f'Already received this request. Resending the reply : {client_request.name}')
                 self.sock.sendto(s_list[2].encode('utf-8'), s_list[3])
@@ -423,17 +412,21 @@ class serverMultiClient():
     # 3. wait_for_client() -Method to handle multiple clients by using an
     # infinite loop
     def wait_for_client(self):
-        while True:
 
-            try:
-                data, client_address = self.sock.recvfrom(1024)
-                c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
+        try:
+            while True:
 
-                c_thread.daemon = True
-                c_thread.start()
+                try:
+                    data, client_address = self.sock.recvfrom(1024)
+                    c_thread = threading.Thread(target=self.handle_request, args=(data, client_address))
 
-            except OSError as e:
-                break
+                    c_thread.daemon = True
+                    c_thread.start()
+
+                except OSError:
+                    break
+        except KeyboardInterrupt:
+            self.shutdown_server()
 
 
 # 4. main() - Driver code to test the program
