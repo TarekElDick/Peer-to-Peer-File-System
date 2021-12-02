@@ -328,11 +328,11 @@ class Client:
             self.printwt("Closing the connection with " + str(host) + ":" + str(port))
 
     # 4.9 updateContact()  - client can update their client information
-    def updateContact(self, ip_address, udp_socket, tcp_socket):
+    def updateContact(self, ip_address, udp_port, tcp_port):
         # must update this clients sockets also
         self.host = ip_address
-        self.UDP_port = udp_socket
-        self.TCP_port = tcp_socket
+        self.UDP_port = udp_port
+        self.TCP_port = tcp_port
 
         # close the old sockets and create and bind the new ones and update the binding
         self.printwt('Closing old sockets and rebinding the new ones...')
@@ -423,7 +423,6 @@ class Client:
             client.publish()
         elif query == 'remove':
             client.remove()
-
         elif query == 'retrieveAll':
             client.retrieveAll()
         elif query == 'retrieveInfot':
@@ -433,7 +432,10 @@ class Client:
             filename = input('> Enter file name to search: ')
             client.searchFile(filename)
         elif query == 'updateContact':
-            newip = input('> Enter new ip address: ')
+            newIp = input('> Enter new ip address: ')
+            newUDPPort = input('> Enter new UDP port: ')
+            newTCPPort = input('> Enter new TCP port: ')
+            client.updateContact(newIp, newUDPPort, newTCPPort)
         elif query == 'download':
             filename = input('> Enter file name to search: ')
             response = client.searchFile(filename)
@@ -442,12 +444,6 @@ class Client:
             elif response[0] == "SEARCH-ERROR":
                 pass
                 #  Add Reason from response
-
-        elif query == 'updateContact':
-            newIP = input('enter new ip address: ')
-            newUDPPort = input('enter new UDP port: ')
-            newTCPPort = input(' enter new TCP port: ')
-            client.updateContact(newIP, newUDPPort, newTCPPort)
 
 
 def main():
