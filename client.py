@@ -4,13 +4,11 @@ import socket
 import os
 import pickle
 from datetime import datetime
-from config import BUFFER_SIZE, UDP_TIMEOUT
-import threading
 from Client_Requests_Classes import register, unregister, update_contact, \
     retrieve_all, retrieve_infot, search_file, publish, remove
 from Client_Requests_Classes.download import Download
 from Client_Requests_Classes.file import File
-from config import BUFFER_SIZE, SERVER_ADDRESS, CHUNK_SIZE
+from config import BUFFER_SIZE, CHUNK_SIZE,UDP_TIMEOUT
 import threading
 
 
@@ -26,7 +24,6 @@ class Client:
         self.timeout = UDP_TIMEOUT
         self.BUFFER_SIZE = BUFFER_SIZE
         self.SERVER_ADDRESS = server_address
-        self.SERVER_ADDRESS = SERVER_ADDRESS
         self.DATA_FOLDER = "./Data"
         self.list_of_available_files = self.get_all_file()
         self.list_of_files_to_remove = self.get_all_file()
@@ -182,10 +179,9 @@ class Client:
             if choice_to_remove != 0:
                 self.list_of_files_to_remove = [self.list_of_files_to_remove[choice_to_remove - 1]]
         else:
-            # choice = [int(x) for x in choice_to_remove.split(",")]
             user_choices = []
-            for choices in choice_to_remove:
-                user_choices.append(self.list_of_files_to_remove[choices - 1])
+            for c in choice_to_remove:
+                user_choices.append(self.list_of_files_to_remove[c - 1])
             self.list_of_files_to_remove = user_choices
         self.printwt("These Files will be removed: " + str(self.list_of_files_to_remove))
         self.printwt("attempt to remove a file from client's list at the server")
@@ -373,6 +369,7 @@ class Client:
         while flag:
             # try to send the command and receive a reply from the server
             try:
+                self.printwt(f'Server Address: {self.SERVER_ADDRESS}')
                 self.UDP_sock.sendto(command_object, self.SERVER_ADDRESS)
                 self.printwt('Sent ' + requestType + ' request to server')
 
