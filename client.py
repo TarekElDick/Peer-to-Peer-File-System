@@ -179,6 +179,7 @@ class Client:
             if choice_to_remove != 0:
                 self.list_of_files_to_remove = [self.list_of_files_to_remove[choice_to_remove - 1]]
         else:
+            choice_to_remove = [int(x) for x in choice_to_remove.split(",")]
             user_choices = []
             for c in choice_to_remove:
                 user_choices.append(self.list_of_files_to_remove[c - 1])

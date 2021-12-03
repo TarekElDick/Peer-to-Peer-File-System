@@ -73,7 +73,7 @@ class serverMultiClient:
             self.list_of_client_files = pickle.load(open('server_saved_data/clientFiles.p', 'rb'))
             self.list_of_registered_clients = pickle.load(open('server_saved_data/registeredClients.p', 'rb'))
             self.list_of_acknowledgements = pickle.load(open('server_saved_data/acknowledgements.p', 'rb'))
-        except (OSError, IOError, EOFError):
+        except (OSError, IOError, EOFError) as e:
             self.printwt('No saved database, creating database')
 
         # 3.1. Create the UDP socket with IPv4 Addressing
