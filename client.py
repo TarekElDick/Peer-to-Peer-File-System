@@ -8,8 +8,9 @@ from Client_Requests_Classes import register, unregister, update_contact, \
     retrieve_all, retrieve_infot, search_file, publish, remove
 from Client_Requests_Classes.download import Download
 from Client_Requests_Classes.file import File
-from config import BUFFER_SIZE, CHUNK_SIZE,UDP_TIMEOUT
+from config import BUFFER_SIZE, CHUNK_SIZE, UDP_TIMEOUT
 import threading
+import sys
 
 
 # 1. init() - sets the host and port address for the UDP Server upon object creation
@@ -146,7 +147,6 @@ class Client:
             choice = int(choice)
             if choice != 0:
                 self.list_of_available_files = [self.list_of_available_files[choice - 1]]
-                # hh
 
         else:
             choice = [int(x) for x in choice.split(",")]
@@ -198,7 +198,7 @@ class Client:
     # 4.5 retrieveAll() - retrieve all the information from the server
     def retrieveAll(self):
         self.printwt('Attempting retrieving all information from the server...')
-        ##
+
         client_retrieve_all_object = retrieve_all.RetrieveAll(self.name, self.host, self.UDP_port)
         print(client_retrieve_all_object.getHeader())
 
@@ -218,7 +218,6 @@ class Client:
         self.printwt('Sending retrieving specific peer files request to server...')
         self.sendToServer(retrieve_infot_object, 'retrieve-infot')
 
-    #  4.7 searchFile() - check with Aida if that's what is required
     def searchFile(self, filename):
         self.printwt('searching specific file ...')
         client_search_file = search_file.SearchFile(self.name, self.host, self.TCP_port, filename)
@@ -405,6 +404,10 @@ class Client:
             except socket.timeout:
                 self.printwt(
                     'Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
+                if ConnectionResetError:
+                    self.printwt('Connection Reset Error: Server might be down or IPV4 address provided is wrong')
+                    self.close_sockets()
+                    sys.exit()
 
     def close_sockets(self):
         self.printwt('Closing sockets...')

@@ -320,7 +320,9 @@ class serverMultiClient:
         searchFound = False
 
         # if the client is registered accept the request
+        print("before chsking -------------")
         if self.check_if_client(up_request):
+            print("at search file ")
 
             for i in range(len(self.list_of_client_files)):
                 #  i = j
@@ -338,6 +340,12 @@ class serverMultiClient:
                                 msg_to_client = (msg_to_client + ' | ' + clientName + ' | ' + str(ipaddr) + ' | ' + str(
                                     TCPPort) + '|' + ']')
                                 self.printwt(msg_to_client)
+        else:
+            msg_to_client = '[SEARCH-ERROR' + ' | ' + str(
+                up_request.rid) + ' | ' + 'user is not registered]'
+            # self.printwt(msg_to_client)
+            self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
+            return
 
         if searchFound:
             self.printwt("end of client lists")
