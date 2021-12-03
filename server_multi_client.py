@@ -358,7 +358,7 @@ class serverMultiClient:
             # self.printwt(msg_to_client)
             self.sock.sendto(msg_to_client.encode('utf-8'), client_address)
             return
-
+#
     def check_if_client(self, client_request):
         for obj in self.list_of_registered_clients:
             if isinstance(obj,
