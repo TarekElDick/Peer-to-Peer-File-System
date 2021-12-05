@@ -403,8 +403,11 @@ class Client:
                 # if we received a reply, set the flag to false, so we don't try again
                 flag = False
             except socket.timeout:
-                self.printwt(
-                    'Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
+                if socket.error:
+                    self.printwt('Socket Error: Server might be down or Server IPv4 Address  might be wrong')
+                    flag = False
+                else:
+                    self.printwt('Failed to receive ' + requestType + ' reply from server attempting ' + str(trials) + ' more times')
 
     def close_sockets(self):
         self.printwt('Closing sockets...')
